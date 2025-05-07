@@ -115,18 +115,18 @@ We'll follow the structure of your implementation plan.
 **Phase 2: Infrastructure Provisioning (Terraform IaC)**
 *Milestone Criteria: Terraform applies cleanly, all cloud resources created. Cloud Run service (placeholder) can connect to Redis, Firestore, Secret Manager. CI pipeline in place. Human engineer reviews Terraform scripts and connectivity.*
 
-1.  **Task 2.1: Terraform Project Initialization & GCP Provider**
+1.  **Task 2.1: Terraform Project Initialization & GCP Provider** [COMPLETED]
     *   **[AI Agent]:** In `infra/`:
         *   Create `main.tf`, `variables.tf`, `outputs.tf`, `versions.tf`.
-        *   Configure `versions.tf` for required Terraform version and Google Cloud provider (e.g., `hashicorp/google`).
-        *   In `variables.tf`, define `gcp_project_id`, `gcp_region`, `gcp_zone`.
-        *   In `main.tf`, configure the Google Cloud provider block.
-    *   **[AI Agent]:** Create `terraform.tfvars.example` with placeholders for `gcp_project_id`, `gcp_region`.
-    *   **[AI Agent]:** Run `terraform init`.
+        *   Configure `versions.tf` for required Terraform version (>= 1.5.0) and Google Cloud provider (`hashicorp/google` >= 5.0.0).
+        *   In `variables.tf`, define variables for `gcp_project_id` (string), `gcp_region` (string, default: "us-central1"), `gcp_zone` (string, default: "us-central1-a").
+        *   In `main.tf`, configure the Google Cloud provider block, referencing variables.
+        *   Create `terraform.tfvars.example` with placeholders for GCP project, region, and zone.
+    *   **[AI Agent]:** Run `terraform init` - Successfully initialized with Google provider v6.34.0.
     *   **[AI Agent]:** Commit and push changes.
     *   **[Human Reviewer]:** Review Terraform project setup and provider configuration. Ensure `terraform.tfvars` is in `.gitignore`.
 
-2.  **Task 2.2: Networking Resources**
+2.  **Task 2.2: Networking Resources** [COMPLETED]
     *   **[AI Agent]:** Create `infra/network.tf`.
     *   **[AI Agent]:** Define resources for:
         *   VPC Network (`google_compute_network`).
