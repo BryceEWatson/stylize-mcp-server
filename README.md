@@ -64,3 +64,18 @@ uvicorn app.main:app --reload
 - `POST /stylize_image`: Stylize an uploaded image with specified style
 - `GET /styles`: List available styles
 - `GET /health`: Server health check
+- `GET /mcp`: MCP server endpoint for Server-Sent Events (SSE)
+
+## MCP Server Access
+
+The Stylize MCP Server exposes a FastMCP endpoint that can be accessed through Server-Sent Events (SSE). This allows clients to interact with the available MCP tools in real-time.
+
+### Local Testing
+
+When running the server locally, the MCP server can be accessed at:
+```
+http://localhost:8080/mcp
+```
+
+The MCP server currently provides the following tools:
+- `stylize_image_mcp_tool`: Takes an image (as bytes) and a style ID, and returns a URL to the stylized image
