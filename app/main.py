@@ -6,6 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uuid
 
+# Import the MCP server module
+from app.mcp_server import get_mcp_router
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -19,6 +22,9 @@ app = FastAPI(
     description="API for stylizing images using generative AI",
     version="0.1.0",
 )
+
+# Include the MCP router
+app.include_router(get_mcp_router(), tags=["mcp"])
 
 # Add CORS middleware
 app.add_middleware(
@@ -86,6 +92,8 @@ async def get_styles():
     """
     # For now, return an empty array
     return []
+
+# The MCP endpoint is now handled by the router included above
 
 # Main entry point
 if __name__ == "__main__":

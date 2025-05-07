@@ -75,21 +75,27 @@ We'll follow the structure of your implementation plan.
     *   **[AI Agent]:** Commit and push changes.
     *   **[Human Reviewer]:** Pull changes. Run the server locally. Test `GET /health`, stubbed `POST /stylize_image` (using curl or Postman), and stubbed `GET /styles`. Review code for clarity, basic logging, and error handling. Approve or request changes.
 
-4.  **Task 1.4: MCP Server Initialization (FastMCP)**
-    *   **[AI Agent]:** Add `fastmcp` to `requirements.txt`. Install.
-    *   **[AI Agent]:** In `app/main.py` (or a dedicated `app/mcp_server.py` imported by `main.py`):
-        *   Initialize `mcp = FastMCP("StylizeServer")`.
-        *   Define a placeholder MCP tool:
+4.  **Task 1.4: MCP Server Initialization (FastMCP)** [COMPLETED]
+    *   **[AI Agent]:** Add `fastmcp` to `requirements.txt`. Install. 
+    *   **[AI Agent]:** In `app/mcp_server.py` imported by `main.py`: 
+        *   Initialize `mcp = FastMCP("StylizeServer")`. 
+        *   Define a placeholder MCP tool: 
             ```python
             @mcp.tool()
-            async def stylize_image_mcp_tool(image_bytes: bytes, style_id: str) -> str: # Or appropriate signature
+            async def stylize_image_mcp_tool(image_bytes: bytes, style_id: str) -> str:
                 """(Placeholder) Stylizes an image with the given style. Returns URL of stylized image."""
                 return f"Placeholder: Image with style '{style_id}' processed. Output at http://example.com/mcp_placeholder.jpg"
             ```
-    *   **[AI Agent]:** Ensure FastMCP integrates with FastAPI. (If FastMCP provides a FastAPI router, mount it. Otherwise, research and document how it will run alongside, e.g. FastMCP's built-in server on a different port for now, or if it can be made to use FastAPI's ASGI lifecycle). For MVP, aim for FastMCP's recommended FastAPI integration.
-    *   **[AI Agent]:** Document in `README.md` or `docs/` how the MCP server is expected to run/be accessed for local testing (e.g., SSE endpoint URL).
-    *   **[AI Agent]:** Commit and push changes.
-    *   **[Human Reviewer]:** Review MCP initialization code, dummy tool definition, and the integration strategy with FastAPI. Test if the FastMCP server part runs without errors. Approve or request changes.
+    *   **[AI Agent]:** Ensure FastMCP integrates with FastAPI. 
+        * Implemented using the proper FastAPI router integration pattern.
+        * Created a function `get_mcp_router()` that creates a FastAPI APIRouter with the MCP endpoint.
+        * Used `mcp.add_endpoint_to_router(router, path="/mcp")` to add the endpoint to the router.
+        * Integrated the router in `main.py` using `app.include_router(get_mcp_router(), tags=["mcp"])`.
+    *   **[AI Agent]:** Document in `README.md` how the MCP server is expected to run/be accessed for local testing. 
+        * Added documentation about the MCP endpoint available at `http://localhost:8080/mcp`.
+        * Documented the available tools provided by the MCP server.
+    *   **[AI Agent]:** Code ready for commit and push. 
+    *   **[Human Reviewer]:** Pending review of MCP initialization code, dummy tool definition, and integration strategy.
 
 5.  **Task 1.5: Milestone Review - Scaffolding Complete**
     *   **[Human Reviewer]:** Confirm all criteria for "Milestone – Scaffolding Complete" are met.
