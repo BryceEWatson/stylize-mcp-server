@@ -22,7 +22,7 @@ We'll follow the structure of your implementation plan.
 **Phase 1: Project Setup and Scaffolding**
 *Milestone Criteria: Repository setup, running server with stubbed `GET /health` and `POST /stylize_image`, FastMCP initialized with dummy tool. Human engineer reviews project structure and baseline code.*
 
-1.  **Task 1.1: Repository and Initial Structure**
+1.  **Task 1.1: Repository and Initial Structure** [COMPLETED]
     *   **[AI Agent]:** Initialize a new private GitHub repository named `stylize-mcp-server` (or similar).
     *   **[AI Agent]:** Select Python as the primary language.
     *   **[AI Agent]:** Create the initial directory structure:
@@ -42,7 +42,7 @@ We'll follow the structure of your implementation plan.
     *   **[Human Reviewer]:** Review GitHub repository settings (e.g., branch protection rules if desired later).
     *   **[Human Reviewer]:** Review directory structure and initial `README.md` for clarity and completeness. Approve or request changes.
 
-2.  **Task 1.2: Define API Contract (MVP)**
+2.  **Task 1.2: Define API Contract (MVP)** [COMPLETED]
     *   **[AI Agent]:** Create `docs/api_contract_mvp.md`.
     *   **[AI Agent]:** Document `POST /stylize_image`:
         *   Method: `POST`
@@ -61,7 +61,7 @@ We'll follow the structure of your implementation plan.
     *   **[AI Agent]:** Document MVP Authentication Decision: "For MVP, no specific authentication will be implemented for `/stylize_image` or `/styles`. Requests will be processed under a single global user context for quota purposes initially. User identification for quotas will be handled via client IP or a simple, non-validated header if necessary." (Or specify API key if decided).
     *   **[Human Reviewer]:** Review `api_contract_mvp.md`. Ensure it aligns with MVP goals and is clear for implementation. Approve or request changes.
 
-3.  **Task 1.3: Baseline Application Skeleton (FastAPI)**
+3.  **Task 1.3: Baseline Application Skeleton (FastAPI)** [COMPLETED]
     *   **[AI Agent]:** Initialize FastAPI project in `app/` (e.g., `app/main.py`).
     *   **[AI Agent]:** Add `fastapi`, `uvicorn[standard]`, `python-multipart` to `requirements.txt`. Install dependencies.
     *   **[AI Agent]:** Implement `GET /health` endpoint returning `{"status": "ok"}`.
