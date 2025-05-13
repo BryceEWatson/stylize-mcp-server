@@ -139,7 +139,7 @@ We'll follow the structure of your implementation plan.
     *   **[AI Agent]:** Commit and push.
     *   **[Human Reviewer]:** Review `network.tf` for correctness, CIDR ranges, and dependencies.
 
-3.  **Task 2.3: Service Account**
+3.  **Task 2.3: Service Account** [COMPLETED]
     *   **[AI Agent]:** Create `infra/iam.tf`.
     *   **[AI Agent]:** Define `google_service_account` for `stylize-mcp-sa`.
     *   **[AI Agent]:** Define `google_project_iam_member` bindings for `stylize-mcp-sa` with roles:
@@ -152,7 +152,7 @@ We'll follow the structure of your implementation plan.
     *   **[AI Agent]:** Commit and push.
     *   **[Human Reviewer]:** Review `iam.tf` to ensure adherence to the principle of least privilege for the defined roles.
 
-4.  **Task 2.4: Storage and Database Resources**
+4.  **Task 2.4: Storage and Database Resources** [COMPLETED]
     *   **[AI Agent]:** Create `infra/storage.tf`.
     *   **[AI Agent]:** Define GCS buckets (`google_storage_bucket`):
         *   `stylize-originals-<project_id_suffix>`
@@ -169,7 +169,7 @@ We'll follow the structure of your implementation plan.
     *   **[AI Agent]:** Commit and push.
     *   **[Human Reviewer]:** Review `storage.tf` for bucket configurations, Redis instance settings, and Pub/Sub topic (if included).
 
-5.  **Task 2.5: API Enablement and Secrets**
+5.  **Task 2.5: API Enablement and Secrets** [COMPLETED]
     *   **[AI Agent]:** Create `infra/apis_secrets.tf`.
     *   **[AI Agent]:** Define `google_project_service` resources to enable:
         *   `run.googleapis.com` (Cloud Run)
