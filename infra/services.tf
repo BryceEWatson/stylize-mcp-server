@@ -3,6 +3,9 @@
 resource "google_cloud_run_v2_service" "stylize_mcp_server" {
   name     = "stylize-mcp-server"
   location = var.gcp_region
+  
+  # Ensure the Cloud Run API is enabled before creating the service
+  depends_on = [google_project_service.run_api]
 
   template {
     containers {

@@ -13,16 +13,19 @@ Before setting up the CI/CD pipeline, ensure that:
 
 ### 1. Create Artifact Registry Repository
 
-If not already created through Terraform, create an Artifact Registry Docker repository to store our container images:
+If not already created through Terraform, create an Artifact Registry Docker repository to store our container images using the following gcloud command:
 
 ```bash
 gcloud artifacts repositories create stylize-repo \
   --repository-format=docker \
-  --location=[REGION] \
-  --description="Docker repository for Stylize MCP Server images"
+  --location=us-central1 \
+  --description="Docker repository for Stylize MCP Server images" \
+  --project=[PROJECT_ID]
 ```
 
-Replace `[REGION]` with your preferred region (e.g., `us-central1`).
+Replace `[PROJECT_ID]` with your actual GCP Project ID (e.g., `stylize-mcp-server`).
+
+> **Note**: This command can be run directly by the human operator to programmatically create the repository without using the GCP Console.
 
 ### 2. Connect Cloud Build to GitHub Repository
 
@@ -35,6 +38,8 @@ Replace `[REGION]` with your preferred region (e.g., `us-central1`).
 
 ### 3. Create Cloud Build Trigger
 
+#### Option 1: Using the Google Cloud Console (UI)
+
 1. In the Cloud Build section, click "Create Trigger"
 2. Configure the trigger with the following settings:
    - Name: `stylize-mcp-server-deploy`
@@ -45,18 +50,56 @@ Replace `[REGION]` with your preferred region (e.g., `us-central1`).
    - Location: Repository
    - Cloud Build configuration file location: `/cloudbuild.yaml`
 3. Add the following substitution variables:
-   - `_REGION`: Your preferred GCP region (e.g., `us-central1`)
+   - `_REGION`: `us-central1`
    - `_ARTIFACT_REPO_NAME`: `stylize-repo`
    - `_SERVICE_NAME`: `stylize-mcp-server`
-   - `_REDIS_HOST`: The Redis host from Terraform output (`terraform output redis_host`)
-   - `_REDIS_PORT`: The Redis port from Terraform output (`terraform output redis_port`)
    - `_OPENAI_API_KEY_SECRET_PATH`: `projects/[PROJECT_ID]/secrets/OPENAI_API_KEY/versions/latest`
      (Replace `[PROJECT_ID]` with your actual GCP Project ID)
 4. Click "Create" to finalize the trigger
 
+#### Option 2: Using gcloud CLI (Recommended for Automation)
+
+To programmatically create the Cloud Build trigger, use the following command:
+
+```bash
+# First, check if you have a GitHub connection already established
+gcloud alpha builds connections list --project=[PROJECT_ID]
+
+# If you don't have a connection yet, create one (interactive process)
+# gcloud alpha builds connections create github [CONNECTION_NAME] --project=[PROJECT_ID]
+
+# Create the trigger using an existing connection
+gcloud builds triggers create github \
+  --name=stylize-mcp-server-deploy \
+  --repo=https://github.com/[YOUR_GITHUB_USERNAME_OR_ORG]/stylize-mcp-server \
+  --branch-pattern=^main$ \
+  --build-config=cloudbuild.yaml \
+  --repo-type=GITHUB \
+  --substitutions=_REGION=us-central1,_ARTIFACT_REPO_NAME=stylize-repo,_SERVICE_NAME=stylize-mcp-server,_OPENAI_API_KEY_SECRET_PATH=projects/[PROJECT_ID]/secrets/OPENAI_API_KEY/versions/latest \
+  --project=[PROJECT_ID]
+
+# Alternatively, if using a GitHub connection
+# gcloud builds triggers create github \
+#   --name=stylize-mcp-server-deploy \
+#   --connection=[CONNECTION_NAME] \
+#   --repository=[REPOSITORY_NAME] \
+#   --branch-pattern=^main$ \
+#   --build-config=cloudbuild.yaml \
+#   --substitutions=_REGION=us-central1,_ARTIFACT_REPO_NAME=stylize-repo,_SERVICE_NAME=stylize-mcp-server,_OPENAI_API_KEY_SECRET_PATH=projects/[PROJECT_ID]/secrets/OPENAI_API_KEY/versions/latest \
+#   --project=[PROJECT_ID]
+```
+
+Replace the following placeholders:
+- `[PROJECT_ID]`: Your GCP project ID (e.g., `stylize-mcp-server`)
+- `[YOUR_GITHUB_USERNAME_OR_ORG]`: Your GitHub username or organization name
+- `[CONNECTION_NAME]`: Name of your Cloud Build GitHub connection (if using that flow)
+- `[REPOSITORY_NAME]`: Name of your repository in the GitHub connection (if using that flow)
+
+> **Note**: Using the CLI approach enables full automation of the CI/CD setup process and can be included in infrastructure scripts.
+
 ### 4. Grant IAM Permissions to Cloud Build Service Account
 
-The Cloud Build service account needs specific permissions to deploy to Cloud Run. Run the following commands:
+The Cloud Build service account needs specific permissions to deploy to Cloud Run. Run the following commands to grant these permissions programmatically:
 
 ```bash
 # Get the Cloud Build service account email
@@ -83,7 +126,9 @@ gcloud projects add-iam-policy-binding [PROJECT_ID] \
   --role="roles/secretmanager.secretAccessor"
 ```
 
-Replace `[PROJECT_ID]` with your GCP Project ID.
+Replace `[PROJECT_ID]` with your GCP Project ID (e.g., `stylize-mcp-server`).
+
+> **Note**: These commands can be run directly by the human operator to programmatically grant all the necessary permissions to the Cloud Build service account.
 
 ## Verifying the Setup
 

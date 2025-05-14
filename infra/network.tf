@@ -5,6 +5,9 @@ resource "google_compute_network" "stylize_mcp_vpc" {
   name                    = "stylize-mcp-vpc"
   auto_create_subnetworks = false
   description             = "VPC network for the Stylize MCP application"
+  
+  # Ensure the Compute Engine API is enabled before creating the VPC
+  depends_on = [google_project_service.compute_api]
 }
 
 # Subnet for the Serverless VPC Access Connector

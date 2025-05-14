@@ -43,6 +43,14 @@ resource "google_project_service" "redis_api" {
   disable_on_destroy         = false
 }
 
+# Compute Engine API
+resource "google_project_service" "compute_api" {
+  project                    = var.gcp_project_id
+  service                    = "compute.googleapis.com"
+  disable_dependent_services = false
+  disable_on_destroy         = false
+}
+
 # Serverless VPC Access API
 resource "google_project_service" "vpcaccess_api" {
   project                    = var.gcp_project_id

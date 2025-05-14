@@ -24,10 +24,10 @@ resource "google_project_iam_member" "stylize_mcp_datastore_user" {
   member  = "serviceAccount:${google_service_account.stylize_mcp_sa.email}"
 }
 
-# Vision API User role for Vision API access
+# AI Platform User role for Vision API access
 resource "google_project_iam_member" "stylize_mcp_vision_user" {
   project = var.gcp_project_id
-  role    = "roles/vision.user"
+  role    = "roles/aiplatform.user"
   member  = "serviceAccount:${google_service_account.stylize_mcp_sa.email}"
 }
 
