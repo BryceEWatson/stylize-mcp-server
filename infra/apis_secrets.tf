@@ -94,7 +94,7 @@ resource "google_secret_manager_secret" "openai_api_key" {
 # Create an initial version with a placeholder value
 # IMPORTANT: The actual API key will be added manually after deployment
 resource "google_secret_manager_secret_version" "openai_api_key_version" {
-  secret        = google_secret_manager_secret.openai_api_key.id
+  secret         = google_secret_manager_secret.openai_api_key.id
   secret_data_wo = "dummy-openai-api-key-placeholder"
-  enabled       = true
+  enabled        = true
 }

@@ -188,7 +188,7 @@ We'll follow the structure of your implementation plan.
     *   **[AI Agent]:** Commit and push.
     *   **[Human Reviewer]:** Review `apis_secrets.tf` for the list of APIs and Secret Manager configuration. Decide on the method for populating the initial secret value.
 
-6.  **Task 2.6: CI/CD Pipeline (Cloud Build) and Cloud Run Service (Placeholder)**
+6.  **Task 2.6: CI/CD Pipeline (Cloud Build) and Cloud Run Service (Placeholder)** [COMPLETED]
     *   **[AI Agent]:** Create `cloudbuild.yaml` at the root of the repository:
         *   Step 1: Build Docker image (using `Dockerfile` from next step).
         *   Step 2: Push image to Artifact Registry (e.g., `REGION-docker.pkg.dev/PROJECT_ID/stylize-repo/stylize-mcp-server:$COMMIT_SHA`).
@@ -211,7 +211,17 @@ We'll follow the structure of your implementation plan.
     *   **[AI Agent]:** Commit and push.
     *   **[Human Reviewer]:** Review `cloudbuild.yaml`, `Dockerfile`, Cloud Run Terraform definition (`services.tf`), and trigger setup. Verify Cloud Build SA permissions.
 
-7.  **Task 2.7: Terraform Apply and Initial Verification**
+7.  **Task 2.7: Infrastructure Cost Optimization for Development**  [COMPLETED]
+    *   **[AI Agent]:** Modify infrastructure to reduce costs during the active development phase:
+        *   Comment out Redis instance in `storage.tf`
+        *   Comment out VPC Connector, Router, and NAT in `network.tf`
+        *   Remove Redis environment variables and VPC connector configuration from the Cloud Run service
+        *   Update `cloudbuild.yaml` to remove Redis-related variables and VPC connector
+        *   Comment out outputs related to Redis and VPC Connector in `outputs.tf`
+    *   **[AI Agent]:** Run `terraform fmt` and `terraform validate` to ensure configuration is valid.
+    *   **[Human Reviewer]:** Review changes for correctness and completeness.
+
+8.  **Task 2.8: Terraform Apply and Initial Verification**
     *   **[Human Reviewer]:** Create `terraform.tfvars` with actual project ID and region.
     *   **[AI Agent]:** Run `terraform plan -out=tfplan`.
     *   **[Human Reviewer]:** Review `terraform plan` output carefully.

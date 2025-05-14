@@ -49,21 +49,22 @@ resource "google_storage_bucket" "stylize_variants_bucket" {
 }
 
 # Memorystore for Redis instance (for caching and rate limiting)
-resource "google_redis_instance" "stylize_mcp_redis" {
-  name           = "stylize-mcp-redis"
-  tier           = "BASIC"
-  memory_size_gb = 1
-  region         = var.gcp_region
-
-  # Connect to the VPC created in network.tf
-  authorized_network = google_compute_network.stylize_mcp_vpc.id
-
-  redis_version = "REDIS_6_X"
-  display_name  = "Stylize MCP Redis Cache"
-  redis_configs = {
-    maxmemory-policy = "allkeys-lru" # Least recently used eviction policy
-  }
-}
+# Commented out to reduce costs during development
+# resource "google_redis_instance" "stylize_mcp_redis" {
+#   name           = "stylize-mcp-redis"
+#   tier           = "BASIC"
+#   memory_size_gb = 1
+#   region         = var.gcp_region
+#
+#   # Connect to the VPC created in network.tf
+#   authorized_network = google_compute_network.stylize_mcp_vpc.id
+#
+#   redis_version = "REDIS_6_X"
+#   display_name  = "Stylize MCP Redis Cache"
+#   redis_configs = {
+#     maxmemory-policy = "allkeys-lru" # Least recently used eviction policy
+#   }
+# }
 
 # Pub/Sub topic for analytics events
 resource "google_pubsub_topic" "stylize_analytics_topic" {
