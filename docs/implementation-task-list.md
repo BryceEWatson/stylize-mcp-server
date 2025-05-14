@@ -221,14 +221,22 @@ We'll follow the structure of your implementation plan.
     *   **[AI Agent]:** Run `terraform fmt` and `terraform validate` to ensure configuration is valid.
     *   **[Human Reviewer]:** Review changes for correctness and completeness.
 
-8.  **Task 2.8: Terraform Apply and Initial Verification**
+8.  **Task 2.8: Terraform Apply and Infrastructure Fixes** [COMPLETED]
     *   **[Human Reviewer]:** Create `terraform.tfvars` with actual project ID and region.
-    *   **[AI Agent]:** Run `terraform plan -out=tfplan`.
-    *   **[Human Reviewer]:** Review `terraform plan` output carefully.
-    *   **[Both]:** If plan is acceptable, **[AI Agent]** (or Human) runs `terraform apply tfplan`.
-    *   **[Human Reviewer]:** Verify resource creation in GCP console.
-    *   **[AI Agent]:** Update `app/main.py` to attempt connections (on startup or via a test endpoint):
-        *   Read `OPENAI_API_KEY` from Secret Manager (via env var set by Cloud Run).
+    *   **[AI Agent]:** Run `terraform plan` and `terraform apply`.
+    *   **[AI Agent]:** Fix issues encountered during Terraform application:
+        *   Correct IAM role for Vision API access (using `roles/aiplatform.user`)
+        *   Add Compute Engine API enablement
+        *   Add proper API dependencies to resources
+    *   **[Human Reviewer]:** Verify resource creation in GCP console after fixes.
+
+9.  **Task 2.9: Post-Terraform Setup Documentation** [COMPLETED]
+    *   **[AI Agent]:** Create comprehensive documentation for post-Terraform manual steps:
+        *   Add `MANUAL_SETUP_CHECKLIST.md` with consolidated setup steps
+        *   Add `docs/cost_management.md` with budget alert automation
+        *   Enhance `docs/cicd_setup.md` with automated gcloud commands
+    *   **[AI Agent]:** Consolidate redundant documentation to avoid duplication.
+    *   **[Human Reviewer]:** Review documentation for completeness and clarity.
         *   Connect to Redis (read host/port from env vars).
         *   Perform a simple Firestore operation (e.g., write/read a dummy document).
     *   **[AI Agent]:** Trigger a Cloud Build run to deploy this test application.
