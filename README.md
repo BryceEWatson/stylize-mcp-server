@@ -6,7 +6,7 @@ The Stylize MCP Server is a cloud-based service that transforms user-supplied im
 
 ## MVP Goals
 
-- Implement a REST API endpoint for image stylization (`POST /stylize_image`)
+- Implement a REST API endpoint for image stylization (`POST /stylize_image`) 
 - Support curated style catalog with UI/icon-specific styles
 - Integrate with DALL·E 3 for image generation
 - Implement content safety filtering with Cloud Vision SafeSearch
