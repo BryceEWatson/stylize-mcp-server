@@ -1,14 +1,3 @@
-Okay, this is an excellent implementation plan. Let's break it down into a detailed, step-by-step task list suitable for an AI agent software engineer and a human approver/reviewer.
-
-The tasks will be prefixed with:
-*   **[AI Agent]** for tasks the AI is expected to perform.
-*   **[Human Reviewer]** for tasks requiring human oversight, review, or approval.
-*   **[Both]** for collaborative tasks or discussions.
-
-We'll follow the structure of your implementation plan.
-
----
-
 **Project: Stylize MCP Server MVP - Detailed Task List**
 
 **Goal:** Deliver the MVP version of the Stylize MCP Server.
