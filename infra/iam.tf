@@ -44,3 +44,9 @@ resource "google_project_iam_member" "stylize_mcp_secret_accessor" {
   role    = "roles/secretmanager.secretAccessor"
   member  = "serviceAccount:${google_service_account.stylize_mcp_sa.email}"
 }
+
+resource "google_service_account_iam_member" "stylize_mcp_sa_actas_self" {
+  service_account_id = google_service_account.stylize_mcp_sa.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.stylize_mcp_sa.email}"
+}
