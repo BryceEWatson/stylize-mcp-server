@@ -7,7 +7,35 @@ from fastapi.responses import JSONResponse
 import uuid
 
 # Import the MCP server module
-from app.mcp_server import get_mcp_router
+import os
+import sys
+from contextlib import contextmanager
+
+# Setup startup error handling and logging
+def log_startup_error(e, context="general"):
+    """Log startup errors with detailed information."""
+    logger = logging.getLogger("startup")
+    logger.error(f"Startup error in {context}: {str(e)}", exc_info=True)
+    env_vars = []
+    for k, v in os.environ.items():
+        if k.upper() in ['SECRET', 'KEY', 'PASSWORD', 'TOKEN'] and len(v) > 6:
+            env_vars.append(f'{k}={v[:3]}...')
+        else:
+            env_vars.append(f'{k}=PRESENT')
+    logger.error(f"Environment variables: {', '.join(env_vars)}")
+    return True  # Error was logged
+
+@contextmanager
+def graceful_import():
+    """Context manager for gracefully handling import errors."""
+    try:
+        yield
+    except ImportError as e:
+        log_startup_error(e, "import")
+        print(f"ERROR: Failed to import required module: {e}", file=sys.stderr)
+
+with graceful_import():
+    from app.mcp_server import get_mcp_router
 
 # Configure logging
 logging.basicConfig(
@@ -24,7 +52,14 @@ app = FastAPI(
 )
 
 # Include the MCP router
-app.include_router(get_mcp_router(), tags=["mcp"])
+try:
+    mcp_router = get_mcp_router()
+    app.include_router(mcp_router, tags=["mcp"])
+    logger.info("Successfully included MCP router")
+except Exception as e:
+    log_startup_error(e, "mcp_router_inclusion")
+    logger.warning("Failed to include MCP router, continuing without it")
+    # Don't re-raise - allow app to start without MCP functionality
 
 # Add CORS middleware
 app.add_middleware(
@@ -59,7 +94,38 @@ async def global_exception_handler(request: Request, exc: Exception):
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "ok"}
+    # Get available services and their status
+    services = {
+        "app": "ok"
+    }
+    
+    # Check MCP service health
+    try:
+        if "mcp_router" in locals():
+            services["mcp"] = "ok"
+        else:
+            services["mcp"] = "unavailable"
+    except Exception:
+        services["mcp"] = "error"
+        
+    # Check required environment variables
+    env_vars_present = {
+        "GCP_PROJECT_ID": "ok" if os.environ.get("GCP_PROJECT_ID") else "missing",
+        "OPENAI_API_KEY_SECRET_PATH": "ok" if os.environ.get("OPENAI_API_KEY_SECRET_PATH") else "missing"
+    }
+    
+    # Optional env vars
+    if os.environ.get("REDIS_HOST") and os.environ.get("REDIS_PORT"):
+        env_vars_present["REDIS"] = "ok"
+    else:
+        env_vars_present["REDIS"] = "not_configured"
+    
+    return {
+        "status": "ok",
+        "services": services,
+        "environment": env_vars_present,
+        "version": "0.1.0"
+    }
 
 # Stubbed stylize_image endpoint
 @app.post("/stylize_image")
