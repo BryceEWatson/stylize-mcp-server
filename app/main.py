@@ -10,6 +10,7 @@ import uuid
 import os
 import sys
 from contextlib import contextmanager
+from app.styles_service import StyleService
 
 # Setup startup error handling and logging
 def log_startup_error(e, context="general"):
@@ -50,6 +51,15 @@ app = FastAPI(
     description="API for stylizing images using generative AI",
     version="0.1.0",
 )
+
+# Initialize the style service
+try:
+    style_service = StyleService()
+    logger.info(f"Loaded {len(style_service.get_all_styles())} styles from catalog")
+except Exception as e:
+    log_startup_error(e, "style_service_initialization")
+    logger.error(f"Failed to initialize style catalog: {str(e)}")
+    raise
 
 # Include the MCP router
 try:
@@ -114,6 +124,13 @@ async def health_check():
         "OPENAI_API_KEY_SECRET_PATH": "ok" if os.environ.get("OPENAI_API_KEY_SECRET_PATH") else "missing"
     }
     
+    # Check style service status
+    try:
+        styles_count = len(style_service.get_all_styles())
+        services["styles"] = f"ok ({styles_count} styles)"
+    except Exception as e:
+        services["styles"] = f"error: {str(e)}"
+    
     # Optional env vars
     if os.environ.get("REDIS_HOST") and os.environ.get("REDIS_PORT"):
         env_vars_present["REDIS"] = "ok"
@@ -163,6 +180,14 @@ async def stylize_image(image: UploadFile = Form(None), style_id: str = Form(Non
             content={"error": "Style ID is required."}
         )
     
+    # Style ID validation
+    if not style_service.is_valid_style_id(style_id):
+        available_styles = style_service.get_available_style_ids()
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": f"Invalid style_id. Available styles are: {available_styles}"}
+        )
+    
     # Content type validation
     valid_content_types = ["image/jpeg", "image/png"]
     if image.content_type not in valid_content_types:
@@ -193,7 +218,7 @@ async def stylize_image(image: UploadFile = Form(None), style_id: str = Form(Non
         "stylized_image_url": f"http://example.com/placeholder_{temp_id}.jpg"
     }
 
-# Stubbed styles endpoint
+# Styles endpoint
 @app.get("/styles")
 async def get_styles():
     """Get available styles.
@@ -201,8 +226,7 @@ async def get_styles():
     Returns:
         JSON array of available styles
     """
-    # For now, return an empty array
-    return []
+    return style_service.get_all_styles()
 
 # The MCP endpoint is now handled by the router included above
 

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "van_gogh",
+    "name": "Van Gogh",
+    "description": "Transforms images into a style reminiscent of Vincent van Gogh's post-impressionist paintings, with bold colors and expressive brush strokes.",
+    "prompt_fragment": "in the style of Vincent van Gogh, with bold, swirling brush strokes and vibrant colors"
+  },
+  {
+    "id": "pixel_art",
+    "name": "Pixel Art",
+    "description": "Converts images into a retro pixel art style with limited color palette and blocky pixelated aesthetic.",
+    "prompt_fragment": "as pixel art, with blocky pixels and limited color palette, 8-bit retro aesthetic"
+  },
+  {
+    "id": "flat_ui_icon",
+    "name": "Flat UI Icon",
+    "description": "Simplifies images into modern flat design UI icons with solid colors, minimal details, and clean lines.",
+    "prompt_fragment": "as a minimalist flat design UI icon, with solid colors, simple shapes, and no gradients or shadows"
+  },
+  {
+    "id": "neumorphic_button",
+    "name": "Neumorphic Button",
+    "description": "Transforms elements into soft, extruded interfaces with subtle shadows and highlights creating a tactile, dimensional effect.",
+    "prompt_fragment": "as a neumorphic UI element with soft shadows, subtle highlights, and extruded appearance against a light background"
+  },
+  {
+    "id": "glassmorphic_card",
+    "name": "Glassmorphic Card",
+    "description": "Converts designs into a modern glassmorphism style with frosted glass effect, transparency, and subtle borders.",
+    "prompt_fragment": "as a glassmorphic UI element with frosted glass transparency, subtle blur, and thin light borders"
+  }
+]
