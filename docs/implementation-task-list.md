@@ -249,7 +249,7 @@
     *   **[AI Agent]:** Commit and push.
     *   **[Human Reviewer]:** Review code for input handling, validation, and error responses. Review unit tests.
 
-2.  **Task 3.2: Style Catalog Loading and `GET /styles` Endpoint**
+2.  **Task 3.2: Style Catalog Loading and `GET /styles` Endpoint** [COMPLETED]
     *   **[AI Agent]:** Create `app/styles.json` with the defined structure: `id`, `name`, `description`, `prompt_fragment`.
         *   Include at least 3-5 diverse styles, with some from "UI Elements" and "Icons & Logos" categories (e.g., "van_gogh", "pixel_art", "flat_ui_icon", "neumorphic_button").
     *   **[AI Agent]:** Implement logic in `app/main.py` (or a helper module) to load `styles.json` at application startup into an in-memory dictionary or list.
@@ -259,7 +259,7 @@
     *   **[AI Agent]:** Commit and push.
     *   **[Human Reviewer]:** Review `styles.json` content. Review code for catalog loading, `GET /styles` implementation, and style validation in `POST /stylize_image`. Review unit tests.
 
-3.  **Task 3.3: Basic Prompt Templating**
+3.  **Task 3.3: Basic Prompt Templating** [COMPLETED]
     *   **[AI Agent]:** Define a strategy for prompt templating. For MVP:
         *   User can optionally provide a `user_prompt: str` field in the `POST /stylize_image` request (form data).
         *   If `user_prompt` is provided: final prompt = `f"{user_prompt}, {style['prompt_fragment']}"`.

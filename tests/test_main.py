@@ -3,10 +3,16 @@
 import io
 import os
 import json
+import sys
 import pytest
 from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
-from app.main import app, MAX_UPLOAD_SIZE_MB, MAX_UPLOAD_SIZE_BYTES
+from fastapi import UploadFile
+
+# Add the project root to the Python path to enable imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from app.main import app, MAX_UPLOAD_SIZE_MB, MAX_UPLOAD_SIZE_BYTES, stylize_image
 from app.styles_service import StyleService
 
 # Sample test styles data
@@ -202,3 +208,43 @@ def test_get_styles(test_client):
         assert "name" in style
         assert "description" in style
         assert "prompt_fragment" in style
+
+
+# Tests for prompt templating logic
+
+@pytest.mark.parametrize("user_prompt,expected_final_prompt", [
+    ("A beautiful sunset over the mountains", "A beautiful sunset over the mountains, prompt for test style"),  # With user prompt
+    ("   ", "prompt for test style"),  # Empty user prompt (whitespace)
+    (None, "prompt for test style"),  # No user prompt
+])
+def test_prompt_templating(valid_jpeg_image, test_client, user_prompt, expected_final_prompt):
+    """Test the prompt templating logic under various conditions."""
+    style_id = "test_style"
+    
+    # Prepare request data
+    data = {"style_id": style_id}
+    if user_prompt is not None:
+        data["user_prompt"] = user_prompt
+    
+    # Mock the styling process to verify the prompt being used
+    with patch("app.main.logger.info") as mock_logger:
+        response = test_client.post(
+            "/stylize_image",
+            files={"image": ("test.jpg", valid_jpeg_image, "image/jpeg")},
+            data=data
+        )
+        
+        # Verify response
+        assert response.status_code == 200
+        assert response.json()["style"] == style_id
+        
+        # Verify the final prompt was logged correctly
+        # We need to check if any of the log calls contain our expected prompt
+        prompt_logged = False
+        for call in mock_logger.call_args_list:
+            log_message = call[0][0]  # First arg of the call
+            if expected_final_prompt in log_message:
+                prompt_logged = True
+                break
+                
+        assert prompt_logged, f"Expected prompt '{expected_final_prompt}' not found in logs"

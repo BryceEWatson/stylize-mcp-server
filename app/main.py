@@ -154,12 +154,13 @@ MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
 # Stylize image endpoint
 @app.post("/stylize_image")
-async def stylize_image(image: UploadFile = Form(None), style_id: str = Form(None)):
+async def stylize_image(image: UploadFile = Form(None), style_id: str = Form(None), user_prompt: str = Form(None)):
     """Stylize an uploaded image with the specified style.
     
     Args:
         image: The image file to stylize
         style_id: The ID of the style to apply
+        user_prompt: Optional user prompt to combine with the style's prompt fragment
         
     Returns:
         JSON with original_id, style, and stylized_image_url
@@ -210,8 +211,18 @@ async def stylize_image(image: UploadFile = Form(None), style_id: str = Form(Non
     # Log successful validation
     logger.info(f"Received valid stylize_image request with style_id: {style_id}")
     
-    # For now, just return a placeholder response
+    # Get the selected style
+    style = style_service.get_style_by_id(style_id)
+    
+    # Create the final prompt using prompt templating logic
+    if user_prompt and user_prompt.strip():
+        final_prompt = f"{user_prompt.strip()}, {style['prompt_fragment']}"
+    else:
+        final_prompt = style['prompt_fragment']
+    
+    # Log the final prompt for debugging
     temp_id = str(uuid.uuid4())
+    logger.info(f"Generated final prompt for request_id {temp_id}: {final_prompt}")
     return {
         "original_id": temp_id,
         "style": style_id,

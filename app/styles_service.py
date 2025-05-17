@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -71,3 +71,14 @@ class StyleService:
             List of style IDs.
         """
         return list(self.styles_by_id.keys())
+        
+    def get_style_by_id(self, style_id: str) -> Optional[Dict]:
+        """Get a style by its ID.
+        
+        Args:
+            style_id: The style ID to retrieve.
+            
+        Returns:
+            The style dictionary if the style ID exists, None otherwise.
+        """
+        return self.styles_by_id.get(style_id)
