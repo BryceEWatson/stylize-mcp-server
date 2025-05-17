@@ -237,7 +237,7 @@
 **Phase 3: Core Feature – `stylize_image` Endpoint Implementation**
 *Milestone Criteria: `stylize_image` endpoint takes an image and style, returns a stylized image URL from GCS via DALL·E 3. `GET /styles` works. Human engineer reviews OpenAI integration, storage, and overall flow.*
 
-1.  **Task 3.1: Image Input Handling and Validation**
+1.  **Task 3.1: Image Input Handling and Validation** [COMPLETED]
     *   **[AI Agent]:** In `app/main.py` (`POST /stylize_image` handler):
         *   Ensure robust parsing of `multipart/form-data` for `image` (file) and `style_id` (string).
         *   Validate uploaded file:
@@ -533,7 +533,7 @@
     *   **[Human Reviewer]:** Review MCP tool implementation, parameter handling, and how it calls the shared core logic.
 
 3.  **Task 8.3: Test MCP Tool with a Client**
-    *   **[AI Agent]:** Provide a simple Python script using `fastmcp` client library to connect to the local/deployed server's MCP SSE endpoint and invoke the `stylize_image_tool` with test image bytes and a style ID.
+    *   **[AI Agent]:** Provide a simple Python script using the `fastmcp` client library. This script should demonstrate how to connect to the server's MCP SSE endpoint and invoke the `stylize_image_mcp_tool`. The script must read a local image file, **explicitly Base64 encode its content into a string**, and then pass this string as the `image_bytes` argument along with a `style_id`.
     *   **[AI Agent]:** Document how to run this test client script in `docs/mcp_testing.md`.
     *   **[Human Reviewer]:** Run the test MCP client against the deployed service.
         *   Verify successful invocation and a correct response (stylized image URL).

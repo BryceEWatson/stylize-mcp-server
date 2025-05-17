@@ -83,6 +83,43 @@ Content-Type: multipart/form-data
 
 ---
 
+## MCP Tools
+
+### 1. stylize_image_mcp_tool
+
+**Tool Name:** `stylize_image_mcp_tool`
+
+**Purpose:** Transform an image according to a specified style via MCP.
+
+**MCP Request Parameters (within the `arguments` object of an MCP call):**
+- `image_bytes` (string, required): The raw image file content, Base64 encoded. The server expects a string containing the Base64 representation of the image bytes.
+- `style_id` (string, required): The identifier of the style to apply. Must be a valid style ID from the style catalog.
+- `user_prompt` (string, optional): Additional descriptive text to guide the image stylization.
+
+**MCP Response (Success):**
+- Return Type: `string`
+- Description: A URL to access the successfully stylized image.
+
+**Example Conceptual MCP Request Payload (for illustration):**
+```json
+// Conceptual example of how an MCP client might structure the call
+{
+  "mcp_version": "1.0", // Or relevant MCP version
+  "tool_name": "stylize_image_mcp_tool",
+  "tool_id": "unique_call_id", // Or relevant MCP call ID
+  "arguments": {
+    "image_bytes": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", // Placeholder Base64 data
+    "style_id": "van_gogh",
+    "user_prompt": "A beautiful landscape" // Optional
+  }
+}
+```
+
+**MCP Response (Error):**
+If an error occurs, the MCP tool will return an error string describing the issue, such as "Invalid style ID" or "Image content not allowed by safety policy."
+
+---
+
 ## Authentication & Rate Limiting
 
 ### MVP Authentication Decision

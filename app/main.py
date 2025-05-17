@@ -127,9 +127,17 @@ async def health_check():
         "version": "0.1.0"
     }
 
-# Stubbed stylize_image endpoint
+# Default max upload size in MB
+DEFAULT_MAX_UPLOAD_SIZE_MB = 5
+
+# Get the configured max upload size from environment variable or use default
+MAX_UPLOAD_SIZE_MB = int(os.environ.get("MAX_UPLOAD_SIZE_MB", DEFAULT_MAX_UPLOAD_SIZE_MB))
+# Convert to bytes for easier comparison
+MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
+
+# Stylize image endpoint
 @app.post("/stylize_image")
-async def stylize_image(image: UploadFile = Form(...), style_id: str = Form(...)):
+async def stylize_image(image: UploadFile = Form(None), style_id: str = Form(None)):
     """Stylize an uploaded image with the specified style.
     
     Args:
@@ -138,8 +146,45 @@ async def stylize_image(image: UploadFile = Form(...), style_id: str = Form(...)
         
     Returns:
         JSON with original_id, style, and stylized_image_url
+        
+    Raises:
+        HTTP 400 Bad Request: If validation fails for any reason
     """
-    logger.info(f"Received stylize_image request with style_id: {style_id}")
+    # Input presence validation
+    if not image:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": "Image file is required."}
+        )
+        
+    if not style_id:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": "Style ID is required."}
+        )
+    
+    # Content type validation
+    valid_content_types = ["image/jpeg", "image/png"]
+    if image.content_type not in valid_content_types:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": "Invalid image format. Only JPEG and PNG are supported."}
+        )
+    
+    # File size validation
+    # Read the first chunk to check the size
+    content = await image.read(MAX_UPLOAD_SIZE_BYTES + 1)  # Read one more byte than the limit to check
+    await image.seek(0)  # Reset file position after reading
+    
+    if len(content) > MAX_UPLOAD_SIZE_BYTES:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": f"Image size exceeds the limit of {MAX_UPLOAD_SIZE_MB} MB."}
+        )
+    
+    # Log successful validation
+    logger.info(f"Received valid stylize_image request with style_id: {style_id}")
+    
     # For now, just return a placeholder response
     temp_id = str(uuid.uuid4())
     return {
