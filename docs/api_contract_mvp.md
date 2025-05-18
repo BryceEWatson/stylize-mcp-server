@@ -144,7 +144,7 @@ If an error occurs, the MCP tool will return an error string describing the issu
   "desired_elements": ["string (optional) - Specific elements or objects that should be included."],
   "avoid_elements": ["string (optional) - Specific elements or objects to avoid."],
   "artistic_mood": "string (optional) - e.g., 'playful', 'serious', 'futuristic', 'minimalist'.",
-  "reference_logo_image_base64": "string (optional) - Base64 encoded string of an existing logo image. If provided, the generation will aim to refresh or create variations based on this reference."
+  "reference_logo_image_base64": "string (optional) - Base64 encoded string of an existing logo image. If provided, this reference image is analyzed (e.g., by a multimodal AI like GPT-4V) along with other context to generate an enhanced textual prompt, which then guides DALL·E 3 in creating a new interpretation or refreshed version."
 }
 ```
 

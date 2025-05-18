@@ -315,17 +315,26 @@
 
 4.  **Task 3.4: OpenAI DALL·E 3 API Integration**
     *   **[AI Agent]:** Add `openai` to `requirements.txt`. Install.
-    *   **[AI Agent]:** Create a service/helper function (e.g., `app/openai_service.py`) to encapsulate DALL·E 3 calls.
+    *   **[AI Agent]:** Create a service/helper function (e.g., `app/openai_service.py`) to encapsulate OpenAI API calls (GPT-4V and DALL·E 3).
     *   **[AI Agent]:** Retrieve OpenAI API key (from environment variable, set by Cloud Run from Secret Manager).
-    *   **[AI Agent]:** Implement the DALL·E 3 API call:
-        *   Use `client.images.generate()` with the final prompt.
-        *   Specify model (e.g., `dall-e-3`), size (e.g., `1024x1024`), quality, n=1.
-        *   DALL·E 3's API typically returns a URL to the generated image or base64 data. For MVP, plan to fetch the image data from this URL server-side to then store in GCS.
-    *   **[AI Agent]:** Implement error handling for OpenAI API calls (e.g., `openai.APIError`, rate limits, content policy violations from OpenAI). Return appropriate HTTP errors (e.g., 503 if OpenAI is down, 400 if prompt rejected by OpenAI).
-    *   **[AI Agent]:** Add unit tests for the OpenAI service, mocking the `openai` client.
+    *   **[AI Agent]:** Implement the OpenAI API integration with a two-step process for reference images:
+        *   **When reference image exists (`decoded_reference_logo_bytes` present):**
+            *   **Step 1:** Call the OpenAI Chat Completions API with a vision-capable model (e.g., `gpt-4-turbo` or `gpt-4o`).
+                *   Pass both the reference image (as base64) AND the components of the `final_prompt`.
+                *   Instruct the vision model to analyze the image and textual context to generate an enhanced, purely textual prompt tailored specifically for DALL·E 3.
+            *   **Step 2:** Call DALL·E 3's `images.generate()` API with the enhanced textual prompt from Step 1.
+                *   Specify model (e.g., `dall-e-3`), size (e.g., `1024x1024`), quality, n=1.
+        *   **When no reference image exists:**
+            *   Call DALL·E 3's `images.generate()` API directly with the original `final_prompt`.
+            *   Specify model (e.g., `dall-e-3`), size (e.g., `1024x1024`), quality, n=1.
+        *   In both cases, DALL·E 3's API typically returns a URL to the generated image or base64 data. For MVP, plan to fetch the image data from this URL server-side to then store in GCS.
+    *   **[AI Agent]:** Implement comprehensive error handling for all OpenAI API calls (e.g., `openai.APIError`, rate limits, content policy violations from OpenAI). Return appropriate HTTP errors (e.g., 503 if OpenAI is down, 400 if prompt rejected by OpenAI).
+    *   **[AI Agent]:** Add unit tests for the OpenAI service, mocking both:
+        *   The OpenAI Chat Completions API call (for reference image analysis).
+        *   The DALL·E 3 `images.generate()` API call.
+        *   The correct flow of data between these two calls when a reference image is provided.
     *   **[AI Agent]:** Commit and push.
-    *   **[Human Reviewer]:** Review OpenAI API integration code, focusing on API key handling (ensure it's not hardcoded/logged), request parameters, error handling, and the strategy for getting image data. Review unit tests.
-    *   **Note:** When implementing this task, the OpenAI API call must be adapted. If `decoded_reference_logo_bytes` are available from context analysis (Task 3.3.2), and the goal is a logo refresh, the DALL-E API's image variation or image-to-image editing features should be used, passing this reference image. Otherwise, use text-to-image with the `final_prompt`.
+    *   **[Human Reviewer]:** Review OpenAI API integration code, focusing on API key handling (ensure it's not hardcoded/logged), request parameters, error handling, and the strategy for getting image data. Review unit tests and verify the correct implementation of the two-step process for reference images.
 
 5.  **Task 3.5: GCS Integration for Originals and Variants**
     *   **[AI Agent]:** Add `google-cloud-storage` to `requirements.txt`. Install.

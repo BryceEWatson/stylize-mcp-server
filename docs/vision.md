@@ -224,7 +224,7 @@ The implementation will follow a phased approach:
    - **Auto-Generation Pipeline**: Create tailored assets based on project context (icons, UI elements, logos)
 
 ### 17.3 MCP Tool Schemas
-* `stylize_image` – Accepts an image URL, one or more style names, and an optional project context object. The project context can include project description, brand colors, mood, and even a reference logo image (for logo refreshes). Provides options for resolution and quality settings, and returns signed URLs for each generated style variant. Includes safety checks and usage tracking.
+* `stylize_image` – Accepts an image URL, one or more style names, and an optional project context object. The project context can include project description, brand colors, mood, and even a reference logo image (which is analyzed by a multimodal AI to refine the prompt for DALL·E 3 for logo refreshes). Provides options for resolution and quality settings, and returns signed URLs for each generated style variant. Includes safety checks and usage tracking.
 * `list_styles` – returns catalog w/ description & recommended model.
 * `add_style` – Auth‑gated; user provides prompt template.
 * `analyze_project` – Analyzes project files, documentation, and existing assets to understand context and suggest appropriate styles or generate project-specific assets automatically.

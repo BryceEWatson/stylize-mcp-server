@@ -8,6 +8,7 @@ from fastapi import FastAPI, UploadFile, Form, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uuid
+import requests
 
 # Import the MCP server module
 import os
@@ -16,6 +17,14 @@ from contextlib import contextmanager
 from app.styles_service import StyleService
 from app.models import ProjectContext
 from app.context_analysis_service import ContextAnalysisService
+from app.openai_service import (
+    OpenAIService, 
+    OpenAIServiceError, 
+    OpenAIAPIConnectionError, 
+    OpenAIRateLimitError, 
+    OpenAIContentPolicyViolationError,
+    OpenAIInvalidRequestError
+)
 
 # Setup startup error handling and logging
 def log_startup_error(e, context="general"):
@@ -73,6 +82,15 @@ try:
 except Exception as e:
     log_startup_error(e, "context_analysis_service_initialization")
     logger.error(f"Failed to initialize context analysis service: {str(e)}")
+    raise
+
+# Initialize the OpenAI service
+try:
+    openai_service = OpenAIService()
+    logger.info("OpenAI service initialized successfully")
+except Exception as e:
+    log_startup_error(e, "openai_service_initialization")
+    logger.error(f"Failed to initialize OpenAI service: {str(e)}")
     raise
 
 # Include the MCP router
@@ -354,16 +372,78 @@ async def stylize_image(
             final_prompt = style['prompt_fragment']
     
     # Log the final prompt and context information for debugging
-    temp_id = str(uuid.uuid4())
-    logger.info(f"Generated final prompt for request_id {temp_id}: {final_prompt}")
+    request_id = str(uuid.uuid4())
+    logger.info(f"Generated final prompt for request_id {request_id}: {final_prompt}")
     if decoded_reference_logo_bytes:
-        logger.info(f"Reference logo provided for request_id {temp_id}, size: {len(decoded_reference_logo_bytes)} bytes")
+        logger.info(f"Reference logo provided for request_id {request_id}, size: {len(decoded_reference_logo_bytes)} bytes")
     
-    return {
-        "original_id": temp_id,
-        "style": style_id,
-        "stylized_image_url": f"http://example.com/placeholder_{temp_id}.jpg"
-    }
+    # Call OpenAI DALL-E 3 to generate the image
+    try:
+        # Determine whether to use text-to-image or image variation based on reference image
+        if decoded_reference_logo_bytes:
+            logger.info(f"Generating image variation with reference logo for request_id {request_id}")
+            image_bytes = openai_service.generate_image_variation(final_prompt, decoded_reference_logo_bytes)
+        else:
+            logger.info(f"Generating image from prompt for request_id {request_id}")
+            image_bytes = openai_service.generate_image_from_prompt(final_prompt)
+            
+        # Log successful image generation
+        logger.info(f"Successfully generated image data for request_id {request_id}, size: {len(image_bytes)} bytes")
+        
+        # For now, return a placeholder URL until GCS upload is implemented in Task 3.5
+        return {
+            "original_id": request_id,
+            "style": style_id,
+            "stylized_image_url": f"http://example.com/placeholder_{request_id}.jpg"
+        }
+        
+    except OpenAIContentPolicyViolationError as e:
+        # 400 Bad Request for content policy violations
+        logger.error(f"Content policy violation for request_id {request_id}: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": f"Content policy violation: {str(e)}"}
+        )
+        
+    except OpenAIInvalidRequestError as e:
+        # 400 Bad Request for invalid requests
+        logger.error(f"Invalid request for request_id {request_id}: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": f"Invalid request: {str(e)}"}
+        )
+        
+    except OpenAIRateLimitError as e:
+        # 429 Too Many Requests for rate limit errors
+        logger.error(f"Rate limit exceeded for request_id {request_id}: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content={"error": f"Rate limit exceeded: {str(e)}"}
+        )
+        
+    except OpenAIAPIConnectionError as e:
+        # 503 Service Unavailable for connection errors
+        logger.error(f"API connection error for request_id {request_id}: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"error": f"Service unavailable: {str(e)}"}
+        )
+        
+    except OpenAIServiceError as e:
+        # 500 Internal Server Error for other OpenAI service errors
+        logger.error(f"OpenAI service error for request_id {request_id}: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"error": f"Internal server error: {str(e)}"}
+        )
+        
+    except Exception as e:
+        # 500 Internal Server Error for unexpected errors
+        logger.error(f"Unexpected error for request_id {request_id}: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"error": "An unexpected internal server error occurred."}
+        )
 
 # Styles endpoint
 @app.get("/styles")

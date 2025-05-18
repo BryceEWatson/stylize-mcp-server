@@ -110,12 +110,20 @@ This plan outlines the steps to build the **MVP version of the Stylize MCP Serve
   * For logo refreshes, the system will utilize the reference logo provided in the `project_context` as a starting point for the image generation, possibly using DALL-E's image variation features instead of pure text-to-image generation.
   * In summary: Analyze structured project context, extract relevant attributes, and intelligently combine them with style prompts to create more targeted and effective generation instructions.
 
-* **Call OpenAI DALL·E 3 API:**
+* **Call OpenAI APIs (GPT-4V + DALL·E 3):**
 
-  * Integrate the OpenAI API client. Use the OpenAI Python library or direct HTTP calls. Retrieve the API key from Secret Manager (the library can load from env var).
-  * Call the DALL·E 3 API (text-to-image if image-to-image via API is not readily available/documented for direct use, or requires complex input preparation. If image-to-image is simple, use that). The Vision document mentions DALL·E 3 supports image variations, which is ideal.
-  * Handle API errors from OpenAI (e.g. rate limits, invalid requests, content policy violations from their end).
-  * **Note on Architecture:** For the MVP, the Cloud Run service will call the DALL·E 3 API directly. This is a simplification of the Pub/Sub + Cloud Functions architecture shown in the vision document's high-level diagram. The asynchronous worker architecture is planned for future scalability, batch processing, and multi-engine orchestration.
+  * Integrate the OpenAI API client. Use the OpenAI Python library for both GPT-4V and DALL·E 3 APIs. Retrieve the API key from Secret Manager (the library can load from env var).
+  * Implement a two-step process for reference image handling:
+    * **When reference image exists (`decoded_reference_logo_bytes` present):**
+      * **Step 1:** Call the OpenAI Chat Completions API with a vision-capable model (e.g., `gpt-4-turbo` or `gpt-4o`).
+        * Pass both the reference image (as base64) AND the components of the `final_prompt`.
+        * Instruct the vision model to analyze the image and textual context to generate an enhanced, purely textual prompt tailored specifically for DALL·E 3.
+      * **Step 2:** Call DALL·E 3's `images.generate()` API with the enhanced textual prompt from Step 1.
+    * **When no reference image exists:**
+      * Call DALL·E 3's `images.generate()` API directly with the original `final_prompt`.
+  * For all API calls to DALL·E 3, specify model `dall-e-3`, size (e.g., `1024x1024`), quality, n=1.
+  * Handle API errors from OpenAI APIs (e.g. rate limits, invalid requests, content policy violations from their end).
+  * **Note on Architecture:** For the MVP, the Cloud Run service will call the OpenAI APIs directly. This is a simplification of the Pub/Sub + Cloud Functions architecture shown in the vision document's high-level diagram. The asynchronous worker architecture is planned for future scalability, batch processing, and multi-engine orchestration.
 
 * **Storing Originals and Variants (GCS Integration):**
 
