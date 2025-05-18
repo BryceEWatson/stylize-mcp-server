@@ -16,8 +16,9 @@ Content-Type: multipart/form-data
 ```
 
 **Request Parameters:**
-- `image` (file, required): The image file to be stylized. Supported formats: JPEG, PNG.
+- `image` (file, required): The primary image file to be stylized (e.g., a sketch, a photo to transform). Required. Supported formats: JPEG, PNG.
 - `style_id` (string, required): The identifier of the style to apply. Must be a valid style ID from the style catalog.
+- `project_context` (string, optional): An optional JSON string containing structured contextual information about the project. This context will be analyzed by the server to refine the image generation prompt. If invalid JSON is provided, an error will be returned.
 
 **Response (Success - 200 OK):**
 ```json
@@ -40,6 +41,8 @@ Content-Type: multipart/form-data
 - Image size exceeds limits
 - Invalid or unsupported style_id
 - Image content violates safety policy (SafeSearch)
+- Invalid `project_context` JSON format
+- Invalid `reference_logo_image_base64` format (if not valid Base64)
 
 ---
 
@@ -92,9 +95,10 @@ Content-Type: multipart/form-data
 **Purpose:** Transform an image according to a specified style via MCP.
 
 **MCP Request Parameters (within the `arguments` object of an MCP call):**
-- `image_bytes` (string, required): The raw image file content, Base64 encoded. The server expects a string containing the Base64 representation of the image bytes.
+- `primary_image_base64` (string, required): The raw primary image file content (e.g., a sketch, a photo for general stylization), Base64 encoded.
 - `style_id` (string, required): The identifier of the style to apply. Must be a valid style ID from the style catalog.
 - `user_prompt` (string, optional): Additional descriptive text to guide the image stylization.
+- `project_context` (object, optional): A JSON object providing project context, including an optional `reference_logo_image_base64` for logo refreshes. See schema defined under the HTTP `POST /stylize_image` endpoint.
 
 **MCP Response (Success):**
 - Return Type: `string`
@@ -108,15 +112,43 @@ Content-Type: multipart/form-data
   "tool_name": "stylize_image_mcp_tool",
   "tool_id": "unique_call_id", // Or relevant MCP call ID
   "arguments": {
-    "image_bytes": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", // Placeholder Base64 data
+    "primary_image_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", // Placeholder Base64 data
     "style_id": "van_gogh",
-    "user_prompt": "A beautiful landscape" // Optional
+    "user_prompt": "A beautiful landscape", // Optional
+    "project_context": { // Optional
+      "project_name": "Mountain Resort Rebrand",
+      "project_description": "Luxury mountain resort logo refresh",
+      "brand_colors": ["#003366", "#FFFFFF", "#7CAD3A"],
+      "artistic_mood": "elegant",
+      "reference_logo_image_base64": "iVBORw0KGgoAAAAN..." // Base64 encoded existing logo image
+    }
   }
 }
 ```
 
 **MCP Response (Error):**
-If an error occurs, the MCP tool will return an error string describing the issue, such as "Invalid style ID" or "Image content not allowed by safety policy."
+If an error occurs, the MCP tool will return an error string describing the issue, such as "Invalid style ID", "Image content not allowed by safety policy", or "Invalid project_context JSON format".
+
+---
+
+## ProjectContext Object Schema
+
+```json
+// ProjectContext Object Schema
+{
+  "project_name": "string (optional)",
+  "project_description": "string (optional) - A brief description of the project or the subject of the image.",
+  "target_audience": "string (optional) - Intended audience for the design.",
+  "keywords": ["string (optional) - List of relevant keywords, concepts, or themes."],
+  "brand_colors": ["hex_code (optional) - Up to 3 primary brand colors (e.g., '#FF0000')."],
+  "desired_elements": ["string (optional) - Specific elements or objects that should be included."],
+  "avoid_elements": ["string (optional) - Specific elements or objects to avoid."],
+  "artistic_mood": "string (optional) - e.g., 'playful', 'serious', 'futuristic', 'minimalist'.",
+  "reference_logo_image_base64": "string (optional) - Base64 encoded string of an existing logo image. If provided, the generation will aim to refresh or create variations based on this reference."
+}
+```
+
+The server will perform a basic analysis on these fields to construct a more targeted prompt.
 
 ---
 

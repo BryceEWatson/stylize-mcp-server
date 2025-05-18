@@ -71,8 +71,18 @@
         *   Define a placeholder MCP tool: 
             ```python
             @mcp.tool()
-            async def stylize_image_mcp_tool(image_bytes: bytes, style_id: str) -> str:
-                """(Placeholder) Stylizes an image with the given style. Returns URL of stylized image."""
+            async def stylize_image_mcp_tool(primary_image_base64: bytes, style_id: str, user_prompt: Optional[str] = None, project_context: Optional[dict] = None) -> str:
+                """(Placeholder) Stylizes an image with the given style and optional project context. Returns URL of stylized image.
+                
+                Args:
+                    primary_image_base64: The raw primary image file content, Base64 encoded.
+                    style_id: The identifier of the style to apply.
+                    user_prompt: Optional additional descriptive text to guide image stylization.
+                    project_context: Optional JSON object providing project context, including reference_logo_image_base64.
+                
+                Returns:
+                    URL to access the stylized image.
+                """
                 return f"Placeholder: Image with style '{style_id}' processed. Output at http://example.com/mcp_placeholder.jpg"
             ```
     *   **[AI Agent]:** Ensure FastMCP integrates with FastAPI. 
@@ -237,7 +247,7 @@
 **Phase 3: Core Feature – `stylize_image` Endpoint Implementation**
 *Milestone Criteria: `stylize_image` endpoint takes an image and style, returns a stylized image URL from GCS via DALL·E 3. `GET /styles` works. Human engineer reviews OpenAI integration, storage, and overall flow.*
 
-1.  **Task 3.1: Image Input Handling and Validation** [COMPLETED]
+1.  **Task 3.1: Image Input Handling and Validation** [PARTIALLY COMPLETED - REVISION NEEDED]
     *   **[AI Agent]:** In `app/main.py` (`POST /stylize_image` handler):
         *   Ensure robust parsing of `multipart/form-data` for `image` (file) and `style_id` (string).
         *   Validate uploaded file:
@@ -245,7 +255,13 @@
             *   Content type (e.g., `image/jpeg`, `image/png`).
             *   Size limit (e.g., 5MB, configurable via env var).
         *   Return HTTP 400 with clear JSON error if validation fails.
+        *   Modify handler signature to accept an optional `project_context_str: Optional[str] = Form(None)`.
+        *   Add logic to parse `project_context_str` into a Python dictionary. If parsing fails (invalid JSON), return an HTTP 400 error.
+        *   Validate that if `project_context` contains `reference_logo_image_base64`, it's a valid Base64 string (basic check, e.g., try to decode it). Return HTTP 400 on failure.
     *   **[AI Agent]:** Add unit tests for input validation logic (using `pytest` and `httpx`).
+        *   Add tests for valid and invalid `project_context_str` (e.g., malformed JSON).
+        *   Add tests for valid and invalid `reference_logo_image_base64` within the context.
+        *   Ensure existing tests for primary image validation are still relevant and pass or are updated.
     *   **[AI Agent]:** Commit and push.
     *   **[Human Reviewer]:** Review code for input handling, validation, and error responses. Review unit tests.
 
@@ -259,16 +275,43 @@
     *   **[AI Agent]:** Commit and push.
     *   **[Human Reviewer]:** Review `styles.json` content. Review code for catalog loading, `GET /styles` implementation, and style validation in `POST /stylize_image`. Review unit tests.
 
-3.  **Task 3.3: Basic Prompt Templating** [COMPLETED]
-    *   **[AI Agent]:** Define a strategy for prompt templating. For MVP:
-        *   User can optionally provide a `user_prompt: str` field in the `POST /stylize_image` request (form data).
-        *   If `user_prompt` is provided: final prompt = `f"{user_prompt}, {style['prompt_fragment']}"`.
-        *   If `user_prompt` is not provided: final prompt = `style['prompt_fragment']` (assuming the style prompt is self-sufficient for generating an image, or describes a transformation on a generic subject).
-    *   **[AI Agent]:** Implement this logic within the `POST /stylize_image` handler.
-    *   **[AI Agent]:** Log the final generated prompt (for debugging).
-    *   **[AI Agent]:** Add unit tests for prompt templating logic.
+3.  **Task 3.3: Context-Aware Prompt Generation** [NEEDS COMPLETE REWORK]
+    *   **[AI Agent] Task 3.3.1: Define `ProjectContext` Pydantic Model.**
+        *   Create `app/models.py` (if it doesn't exist).
+        *   Define a Pydantic model `ProjectContext` based on the schema specified in `api_contract_mvp.md`. This will handle validation of the context object's structure and types automatically when used in FastAPI.
+        *   The `POST /stylize_image` handler in `main.py` should now try to parse the `project_context_str` (if provided) into this Pydantic model. FastAPI can also do this automatically if you pass the model as a type hint to a Form field or body.
+    *   **[AI Agent] Task 3.3.2: Implement Basic Project Context Analysis Service.**
+        *   Create `app/context_analysis_service.py` with a class `ContextAnalysisService`.
+        *   Method `analyze(self, context: ProjectContext) -> Dict[str, any]:`
+            *   Input: Validated `ProjectContext` Pydantic object.
+            *   MVP Logic:
+                *   Concatenate relevant text fields (`project_name`, `project_description`, `keywords`, `desired_elements`, `artistic_mood`) into a descriptive "context summary string."
+                *   Extract `brand_colors`.
+                *   Extract `reference_logo_image_base64` (and decode it to bytes if valid).
+                *   Extract `avoid_elements`.
+            *   Output: A dictionary containing `context_summary_string`, `brand_colors_list`, `decoded_reference_logo_bytes` (or `None`), `avoid_elements_list`.
+    *   **[AI Agent] Task 3.3.3: Implement Advanced Prompt Generation Logic.**
+        *   Modify `app/main.py` (`POST /stylize_image` handler) or create a new `app/prompt_service.py`.
+        *   Logic:
+            1.  After all input validations (primary image, style_id, project_context object).
+            2.  Get the selected `style` object (e.g., using `style_service.get_style_by_id()`).
+            3.  If `project_context` was provided and is valid, call `ContextAnalysisService.analyze()`.
+            4.  Construct `final_prompt`:
+                *   Start with `style['prompt_fragment']`.
+                *   Append/prepend the `context_summary_string` from analysis results.
+                *   If `user_prompt` (from the Form data) is provided, incorporate it strategically (e.g., as a specific instruction or override).
+                *   Consider how `brand_colors` and `avoid_elements` might be translated into prompt language (e.g., "using primary colors red, blue", "avoiding depictions of X").
+                *   This step requires careful thought on how to best combine these diverse inputs into a coherent and effective prompt for DALL-E.
+            5.  The `decoded_reference_logo_bytes` will be passed separately to the OpenAI API call in Task 3.4 if image-to-image/variation is used.
+    *   **[AI Agent] Task 3.3.4: Update Logging and Unit Tests.**
+        *   Log the `final_prompt` and key elements from the `project_context` that influenced it.
+        *   Write comprehensive unit tests for:
+            *   `ProjectContext` Pydantic model (validation).
+            *   `ContextAnalysisService.analyze` method (various context inputs and expected analysis outputs).
+            *   The new prompt generation logic, testing different combinations of `style`, `project_context` analysis results, and `user_prompt`. Use `pytest.mark.parametrize`.
+            *   Verify log outputs.
     *   **[AI Agent]:** Commit and push.
-    *   **[Human Reviewer]:** Review prompt templating logic and its flexibility for MVP. Review unit tests. Acknowledge the "Note for MVP: one style per call" and "Note on Architecture: direct DALL-E call" from the plan.
+    *   **[Human Reviewer]:** Review the new context-aware prompt generation implementation and unit tests.
 
 4.  **Task 3.4: OpenAI DALL·E 3 API Integration**
     *   **[AI Agent]:** Add `openai` to `requirements.txt`. Install.
@@ -282,6 +325,7 @@
     *   **[AI Agent]:** Add unit tests for the OpenAI service, mocking the `openai` client.
     *   **[AI Agent]:** Commit and push.
     *   **[Human Reviewer]:** Review OpenAI API integration code, focusing on API key handling (ensure it's not hardcoded/logged), request parameters, error handling, and the strategy for getting image data. Review unit tests.
+    *   **Note:** When implementing this task, the OpenAI API call must be adapted. If `decoded_reference_logo_bytes` are available from context analysis (Task 3.3.2), and the goal is a logo refresh, the DALL-E API's image variation or image-to-image editing features should be used, passing this reference image. Otherwise, use text-to-image with the `final_prompt`.
 
 5.  **Task 3.5: GCS Integration for Originals and Variants**
     *   **[AI Agent]:** Add `google-cloud-storage` to `requirements.txt`. Install.
@@ -301,6 +345,7 @@
     *   **[AI Agent]:** Add unit tests for GCS service, mocking the `google-cloud-storage` client.
     *   **[AI Agent]:** Commit and push.
     *   **[Human Reviewer]:** Review GCS integration code, naming conventions for stored objects, and error handling. Review unit tests.
+    *   **Note:** If a `reference_logo_image_base64` is provided and used, consider if this reference image also needs to be stored in GCS, perhaps in a different prefix or bucket for audit/reference. For MVP, focus on storing the primary uploaded image and the generated variants.
 
 6.  **Task 3.6: Response Construction with Signed URL**
     *   **[AI Agent]:** In `app/gcs_service.py`, implement a function to generate a GCS signed URL for a given object in the `stylize-variants` bucket.
@@ -321,6 +366,7 @@
         *   Original and stylized images are stored in GCS.
         *   Response contains a working signed URL to the stylized image.
         *   Basic error handling for invalid inputs and API failures is in place.
+        *   Endpoint accepts `project_context` and uses it to influence prompt generation. If a reference logo is provided in context, this is acknowledged for future use in image generation.
     *   **[Human Reviewer]:** Provide go-ahead for Phase 4.
 
 ---
@@ -387,10 +433,12 @@
 
 2.  **Task 5.2: Implement Caching Key Design and Logic**
     *   **[AI Agent]:** In `POST /stylize_image` handler:
-        *   After receiving image and `style_id`:
+        *   After receiving image, `style_id`, and optional `project_context`:
             *   Compute image hash (SHA-256 of image bytes, stream for large files).
-            *   Form cache key: `f"stylize:{image_hash}:{style_id}"`.
+            *   If `project_context` is provided, compute a context hash (e.g., SHA-256 of serialized context or its analysis result).
+            *   Form cache key: `f"stylize:{image_hash}:{style_id}:{context_hash}"` if context provided, or `f"stylize:{image_hash}:{style_id}"` if not.
         *   Check Redis for this key using `cache_service.get(cache_key)`.
+        *   The cache key must now incorporate a hash of the processed `project_context` (or its analysis result) in addition to `image_hash` and `style_id`, as different contexts should yield different results.
     *   **[AI Agent]:** Commit and push.
     *   **[Human Reviewer]:** Review cache key generation.
 

@@ -1,6 +1,9 @@
 """Main application module for the Stylize MCP Server."""
 
 import logging
+import json
+import base64
+from typing import Optional, Dict, Any
 from fastapi import FastAPI, UploadFile, Form, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -11,6 +14,8 @@ import os
 import sys
 from contextlib import contextmanager
 from app.styles_service import StyleService
+from app.models import ProjectContext
+from app.context_analysis_service import ContextAnalysisService
 
 # Setup startup error handling and logging
 def log_startup_error(e, context="general"):
@@ -59,6 +64,15 @@ try:
 except Exception as e:
     log_startup_error(e, "style_service_initialization")
     logger.error(f"Failed to initialize style catalog: {str(e)}")
+    raise
+
+# Initialize the context analysis service
+try:
+    context_analysis_service = ContextAnalysisService()
+    logger.info("Context analysis service initialized")
+except Exception as e:
+    log_startup_error(e, "context_analysis_service_initialization")
+    logger.error(f"Failed to initialize context analysis service: {str(e)}")
     raise
 
 # Include the MCP router
@@ -154,13 +168,19 @@ MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
 # Stylize image endpoint
 @app.post("/stylize_image")
-async def stylize_image(image: UploadFile = Form(None), style_id: str = Form(None), user_prompt: str = Form(None)):
+async def stylize_image(
+    image: UploadFile = Form(None), 
+    style_id: str = Form(None), 
+    user_prompt: str = Form(None),
+    project_context_str: Optional[str] = Form(None)
+):
     """Stylize an uploaded image with the specified style.
     
     Args:
-        image: The image file to stylize
+        image: The primary image file to stylize
         style_id: The ID of the style to apply
         user_prompt: Optional user prompt to combine with the style's prompt fragment
+        project_context_str: Optional JSON string containing structured contextual information
         
     Returns:
         JSON with original_id, style, and stylized_image_url
@@ -207,6 +227,89 @@ async def stylize_image(image: UploadFile = Form(None), style_id: str = Form(Non
             status_code=status.HTTP_400_BAD_REQUEST,
             content={"error": f"Image size exceeds the limit of {MAX_UPLOAD_SIZE_MB} MB."}
         )
+        
+    # Process project_context if provided
+    project_context = None
+    decoded_reference_logo_bytes = None
+    context_analysis_result = None
+    
+    if project_context_str:
+        # Parse the JSON string
+        try:
+            project_context_dict = json.loads(project_context_str)
+            logger.info(f"Successfully parsed project_context JSON")
+        except json.JSONDecodeError as e:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"error": f"Invalid project_context JSON format: {str(e)}"}
+            )
+            
+        # Validate the parsed dictionary against our Pydantic model
+        try:
+            # Pre-validate base64 data if present
+            if 'reference_logo_image_base64' in project_context_dict and project_context_dict['reference_logo_image_base64']:
+                try:
+                    # First do a direct decode attempt to catch obvious errors
+                    base64_str = project_context_dict['reference_logo_image_base64']
+                    if not isinstance(base64_str, str):
+                        raise ValueError(f"Invalid type for base64 data: expected string, got {type(base64_str).__name__}")
+                        
+                    # Check for invalid characters
+                    import re
+                    if not re.match('^[A-Za-z0-9+/]*={0,2}$', base64_str):
+                        raise ValueError("Invalid characters in base64 string")
+                        
+                    # Try decoding
+                    try:
+                        base64.b64decode(base64_str, validate=True)
+                    except Exception as e:
+                        raise ValueError(f"Base64 decode failed: {str(e)}")
+                        
+                except Exception as e:
+                    logger.error(f"Invalid base64 encoding detected: {str(e)}")
+                    return JSONResponse(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        content={"error": f"Invalid project_context data: Invalid base64 encoding: {str(e)}"}
+                    )
+            
+            # Continue with Pydantic validation
+            from pydantic import ValidationError
+            try:
+                project_context = ProjectContext(**project_context_dict)
+                logger.info(f"Successfully validated project_context against schema")
+            except ValidationError as e:
+                logger.error(f"Pydantic validation error: {str(e)}")
+                return JSONResponse(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    content={"error": f"Invalid project_context data: {str(e)}"}
+                )
+        except Exception as e:
+            logger.error(f"Unexpected error in project_context validation: {str(e)}")
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                content={"error": f"Invalid project_context data: {str(e)}"}  
+            )
+            
+        # Now we can analyze the validated ProjectContext
+        try:
+            # Double-check base64 for added safety
+            if project_context.reference_logo_image_base64:
+                try:
+                    base64.b64decode(project_context.reference_logo_image_base64)
+                except Exception as e:
+                    # If this fails, we should return a 400 error
+                    logger.error(f"Base64 validation failed: {str(e)}")
+                    return JSONResponse(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        content={"error": f"Invalid project_context data: Invalid base64 encoding: {str(e)}"}
+                    )
+                    
+            context_analysis_result = context_analysis_service.analyze(project_context)
+            logger.info(f"Successfully analyzed project context")
+        except Exception as e:
+            logger.error(f"Error analyzing project context: {str(e)}")
+            # We'll continue with the request even if analysis fails,
+            # Just without the context enhancement
     
     # Log successful validation
     logger.info(f"Received valid stylize_image request with style_id: {style_id}")
@@ -214,15 +317,48 @@ async def stylize_image(image: UploadFile = Form(None), style_id: str = Form(Non
     # Get the selected style
     style = style_service.get_style_by_id(style_id)
     
-    # Create the final prompt using prompt templating logic
-    if user_prompt and user_prompt.strip():
-        final_prompt = f"{user_prompt.strip()}, {style['prompt_fragment']}"
-    else:
-        final_prompt = style['prompt_fragment']
+    # Construct final prompt using context-aware prompt generation
+    context_summary = ""
+    brand_colors_text = ""
+    avoid_elements_text = ""
     
-    # Log the final prompt for debugging
+    if context_analysis_result:
+        # Get context summary from analysis result
+        context_summary = context_analysis_result.get("context_summary_string", "")
+        
+        # Format brand colors into textual description if available
+        brand_colors = context_analysis_result.get("brand_colors_list", [])
+        if brand_colors and len(brand_colors) > 0:
+            color_names = ", ".join(brand_colors)
+            brand_colors_text = f" using colors {color_names}"
+            
+        # Format elements to avoid if available
+        avoid_elements = context_analysis_result.get("avoid_elements_list", [])
+        if avoid_elements and len(avoid_elements) > 0:
+            elements_to_avoid = ", ".join(avoid_elements)
+            avoid_elements_text = f". Avoid including {elements_to_avoid}"
+            
+        # Store reference logo bytes for potential use in image variation API calls
+        decoded_reference_logo_bytes = context_analysis_result.get("decoded_reference_logo_bytes")
+    
+    # Construct the final prompt combining all elements
+    if context_summary:
+        if user_prompt and user_prompt.strip():
+            final_prompt = f"{context_summary}, {user_prompt.strip()}{brand_colors_text}, {style['prompt_fragment']}{avoid_elements_text}"
+        else:
+            final_prompt = f"{context_summary}{brand_colors_text}, {style['prompt_fragment']}{avoid_elements_text}"
+    else:
+        if user_prompt and user_prompt.strip():
+            final_prompt = f"{user_prompt.strip()}, {style['prompt_fragment']}"
+        else:
+            final_prompt = style['prompt_fragment']
+    
+    # Log the final prompt and context information for debugging
     temp_id = str(uuid.uuid4())
     logger.info(f"Generated final prompt for request_id {temp_id}: {final_prompt}")
+    if decoded_reference_logo_bytes:
+        logger.info(f"Reference logo provided for request_id {temp_id}, size: {len(decoded_reference_logo_bytes)} bytes")
+    
     return {
         "original_id": temp_id,
         "style": style_id,

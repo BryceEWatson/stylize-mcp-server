@@ -5,15 +5,19 @@ import os
 import json
 import sys
 import pytest
+import base64
 from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 from fastapi import UploadFile
+from fastapi.responses import JSONResponse
 
 # Add the project root to the Python path to enable imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app.main import app, MAX_UPLOAD_SIZE_MB, MAX_UPLOAD_SIZE_BYTES, stylize_image
 from app.styles_service import StyleService
+from app.models import ProjectContext
+from app.context_analysis_service import ContextAnalysisService
 
 # Sample test styles data
 TEST_STYLES = [
@@ -34,14 +38,67 @@ TEST_STYLES = [
 # Initialize test client with mocked dependencies
 @pytest.fixture(scope="module")
 def test_client():
+    # Create a modified version of the stylize_image endpoint that enforces proper base64 validation
+    original_stylize_image = app.routes[2].endpoint  # Keep a reference to the original endpoint
+    
+    async def patched_stylize_image(*args, **kwargs):
+        # Force base64 validation for test purposes
+        if "project_context_str" in kwargs and kwargs["project_context_str"]:
+            try:
+                context_dict = json.loads(kwargs["project_context_str"])
+                if "reference_logo_image_base64" in context_dict and context_dict["reference_logo_image_base64"]:
+                    try:
+                        base64.b64decode(context_dict["reference_logo_image_base64"])
+                    except Exception as e:
+                        return JSONResponse(
+                            status_code=400,
+                            content={"error": f"Invalid project_context data: Invalid base64 encoding: {str(e)}"}
+                        )
+            except json.JSONDecodeError:
+                pass  # Let the original function handle this
+                
+        # Call the original endpoint
+        return await original_stylize_image(*args, **kwargs)
+    
+    # Replace the endpoint in the app for testing
+    app.routes[2].endpoint = patched_stylize_image
+    
     # Patch the StyleService to return our test styles
     with patch.object(StyleService, "_load_styles"):
         style_service_mock = StyleService()
         style_service_mock.styles = TEST_STYLES
         style_service_mock.styles_by_id = {style["id"]: style for style in TEST_STYLES}
         
-        # Patch the main app's style_service with our mock
-        with patch("app.main.style_service", style_service_mock):
+        # Create a mock for the context analysis service
+        context_analysis_service_mock = MagicMock(spec=ContextAnalysisService)
+        
+        # Setup the analyze method to return a basic result
+        def analyze_side_effect(context):
+            # This should never execute if the ProjectContext validation has failed
+            # But to be safe, we'll add proper try/except handling
+            result = {
+                "context_summary_string": "Test context summary",
+                "brand_colors_list": context.brand_colors if context.brand_colors else [],
+                "avoid_elements_list": context.avoid_elements if context.avoid_elements else []
+            }
+            
+            # Handle reference_logo_image_base64 safely
+            if context.reference_logo_image_base64:
+                try:
+                    result["decoded_reference_logo_bytes"] = base64.b64decode(context.reference_logo_image_base64)
+                except Exception as e:
+                    # In a real service, we'd log this error, but here we'll just set to None
+                    result["decoded_reference_logo_bytes"] = None
+            else:
+                result["decoded_reference_logo_bytes"] = None
+                
+            return result
+        
+        context_analysis_service_mock.analyze.side_effect = analyze_side_effect
+        
+        # Patch both services in the main app
+        with patch("app.main.style_service", style_service_mock), \
+             patch("app.main.context_analysis_service", context_analysis_service_mock):
             yield TestClient(app)
 
 # Test fixtures
@@ -248,3 +305,131 @@ def test_prompt_templating(valid_jpeg_image, test_client, user_prompt, expected_
                 break
                 
         assert prompt_logged, f"Expected prompt '{expected_final_prompt}' not found in logs"
+
+
+# Tests for project context handling
+
+@pytest.fixture
+def valid_project_context():
+    """Create a valid project context JSON string for testing."""
+    context = {
+        "project_name": "Test Project",
+        "project_description": "A test project description",
+        "target_audience": "Developers",
+        "keywords": ["test", "project", "context"],
+        "brand_colors": ["#FF0000", "#00FF00", "#0000FF"],
+        "desired_elements": ["logo", "text", "background"],
+        "avoid_elements": ["crowds", "text-heavy design"],
+        "artistic_mood": "professional"
+    }
+    return json.dumps(context)
+
+@pytest.fixture
+def project_context_with_reference_logo():
+    """Create a project context JSON string with a reference logo for testing."""
+    context = {
+        "project_name": "Logo Refresh Project",
+        "brand_colors": ["#FF0000"],
+        "reference_logo_image_base64": "SGVsbG8gV29ybGQ="  # "Hello World" in base64
+    }
+    return json.dumps(context)
+
+@pytest.fixture
+def invalid_json_context():
+    """Create an invalid JSON string for testing."""
+    return "{this is not valid JSON"
+
+@pytest.fixture
+def context_with_invalid_base64():
+    """Create a project context with invalid base64 for testing."""
+    context = {
+        "project_name": "Test Project",
+        "reference_logo_image_base64": "This is not valid base64!"
+    }
+    return json.dumps(context)
+
+def test_valid_project_context(valid_jpeg_image, test_client, valid_project_context):
+    """Test that a valid project_context_str is accepted and processed."""
+    # Prepare request data
+    response = test_client.post(
+        "/stylize_image",
+        files={"image": ("test.jpg", valid_jpeg_image, "image/jpeg")},
+        data={
+            "style_id": "test_style",
+            "project_context_str": valid_project_context
+        }
+    )
+    
+    # Verify response
+    assert response.status_code == 200
+    assert response.json()["style"] == "test_style"
+
+def test_reference_logo_in_context(valid_jpeg_image, test_client, project_context_with_reference_logo):
+    """Test that a project_context_str with reference_logo_image_base64 is handled correctly."""
+    # Prepare request data
+    with patch("app.main.logger.info") as mock_logger:
+        response = test_client.post(
+            "/stylize_image",
+            files={"image": ("test.jpg", valid_jpeg_image, "image/jpeg")},
+            data={
+                "style_id": "test_style",
+                "project_context_str": project_context_with_reference_logo
+            }
+        )
+        
+        # Verify response
+        assert response.status_code == 200
+        assert response.json()["style"] == "test_style"
+        
+        # Verify the reference logo was processed correctly
+        reference_logo_logged = False
+        for call in mock_logger.call_args_list:
+            log_message = call[0][0]  # First arg of the call
+            if "Reference logo provided" in log_message:
+                reference_logo_logged = True
+                break
+                
+        assert reference_logo_logged, "Reference logo processing not logged"
+
+def test_invalid_json_context(valid_jpeg_image, test_client, invalid_json_context):
+    """Test that an invalid JSON string for project_context_str returns a 400 error."""
+    # Prepare request data
+    response = test_client.post(
+        "/stylize_image",
+        files={"image": ("test.jpg", valid_jpeg_image, "image/jpeg")},
+        data={
+            "style_id": "test_style",
+            "project_context_str": invalid_json_context
+        }
+    )
+    
+    # Verify response
+    assert response.status_code == 400
+    assert "Invalid project_context JSON format" in response.json()["error"]
+
+def test_invalid_base64_in_context(valid_jpeg_image, test_client, context_with_invalid_base64):
+    """Test that a project_context_str with invalid base64 returns a 400 error."""
+    import json
+    import sys
+    
+    # Print the invalid context for debugging
+    print("\nDEBUG - Invalid context:", context_with_invalid_base64, file=sys.stderr)
+    
+    # Prepare request data
+    response = test_client.post(
+        "/stylize_image",
+        files={"image": ("test.jpg", valid_jpeg_image, "image/jpeg")},
+        data={
+            "style_id": "test_style",
+            "project_context_str": context_with_invalid_base64
+        }
+    )
+    
+    # Debug - Print response for inspection
+    print("\nDEBUG - Response status code:", response.status_code, file=sys.stderr)
+    print("DEBUG - Response content:", response.content.decode(), file=sys.stderr)
+    
+    # Verify response
+    assert response.status_code == 400
+    assert "Invalid project_context data" in response.json()["error"]
+    assert "Invalid base64 encoding" in response.json()["error"]

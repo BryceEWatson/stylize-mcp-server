@@ -100,11 +100,15 @@ This plan outlines the steps to build the **MVP version of the Stylize MCP Serve
   * An endpoint (`GET /styles`) **must be implemented as part of the MVP** to list all available styles from the catalog. This is a core feature as per the vision document.
   * The initial `styles.json` for the MVP **will include representative styles from "UI Elements" and "Icons & Logos" categories**, in addition to other artistic styles.
 
-* **Basic Prompt Templating:**
+* **Context-Aware Prompt Generation:**
 
-  * Implement logic to build the final prompt for the OpenAI API. For MVP, a simple approach: use the style’s prompt template as the basis. If we have a way to describe the original image’s content, insert it; otherwise, just rely on the style prompt.
-  * *Example:* If style prompt is `"in the style of Monet's watercolor landscape"`, and if the user’s image is a portrait of a dog, ideally we’d combine to instruct DALL·E accordingly (e.g. "A portrait of a dog, in the style of Monet's watercolor landscape"). If automatic content description is too complex, we might require the user to provide a brief description of their image as input for the MVP. This detail should be clarified: **for MVP, we can assume the user provides a text prompt or the style inherently implies the transformation on the same content**.
-  * In summary, prepare variables: the style prompt and possibly the original image description (if available). Combine them to form the text that will be sent to DALL·E 3.
+  * Implement a sophisticated prompt generation system that integrates project context into the stylization process. This involves:
+    * Defining a `ProjectContext` data model to capture structured information about the project, including project description, brand colors, keywords, artistic mood, and an optional reference logo image.
+    * Creating a context analysis service to process these inputs and extract meaningful elements for prompt enhancement.
+    * Building a prompt construction algorithm that intelligently combines the style's prompt fragment with context-derived information and user prompts (if provided).
+  * *Example:* If the style prompt is `"in the style of Monet's watercolor landscape"` and the project context indicates a luxury resort with blue and green brand colors and a "serene" mood, the final prompt might be enhanced to `"A luxury resort logo with serene atmosphere, incorporating blue and green colors, in the style of Monet's watercolor landscape"`.
+  * For logo refreshes, the system will utilize the reference logo provided in the `project_context` as a starting point for the image generation, possibly using DALL-E's image variation features instead of pure text-to-image generation.
+  * In summary: Analyze structured project context, extract relevant attributes, and intelligently combine them with style prompts to create more targeted and effective generation instructions.
 
 * **Call OpenAI DALL·E 3 API:**
 
@@ -345,6 +349,10 @@ This plan outlines the steps to build the **MVP version of the Stylize MCP Serve
 * **Secrets and Keys Management:** Losing the OpenAI key or exposing it is a security risk. **Mitigation:** We never log the key or include it in client responses. Using Secret Manager and not storing the key in the container image or repo ensures safety. Also rotate the key if needed. Similarly, ensure the GCP service account keys are not exposed (we use IAM roles directly).
 
 * **Third-Party Dependencies:** Relying on OpenAI, Google APIs, and FastMCP means if any of those services have an outage or bug, our server might fail. **Mitigation:** Have fallbacks if possible: e.g., if OpenAI is down or returns error, return a graceful error to user ("Stylization service is currently unavailable, please try later"). The AI agent implementer should code defensively around external API calls. Also pin dependency versions in requirements to prevent unexpected changes.
+
+* **Complexity of Context Analysis and Prompt Engineering:** Defining how to effectively translate structured context into a DALL-E prompt is non-trivial. There's a risk of creating overly complex or ineffective prompts that don't properly utilize the context information. **Mitigation:** Keep analysis simple for MVP (e.g., keyword extraction, string concatenation) and maintain clear prompt construction rules to avoid scope creep. Start with basic context incorporation and iterate based on results. Log both input contexts and generated prompts to enable refinement.
+
+* **Managing `project_context` Schema:** The initial schema might need adjustments as we learn more about effective context parameters. Changes to this schema could impact clients and backend logic. **Mitigation:** Design the initial schema carefully with forward compatibility in mind. Document the schema thoroughly, validate all inputs strictly, and handle missing fields gracefully. Consider versioning the schema if significant changes are needed post-MVP.
 
 By anticipating these pitfalls, the AI agent and human engineer can keep a close watch during implementation and testing. With this plan and careful execution, we aim to successfully deliver the Stylize MCP Server MVP with all the requested functionality.
 
