@@ -247,7 +247,7 @@
 **Phase 3: Core Feature – `stylize_image` Endpoint Implementation**
 *Milestone Criteria: `stylize_image` endpoint takes an image and style, returns a stylized image URL from GCS via DALL·E 3. `GET /styles` works. Human engineer reviews OpenAI integration, storage, and overall flow.*
 
-1.  **Task 3.1: Image Input Handling and Validation** [PARTIALLY COMPLETED - REVISION NEEDED]
+1.  **Task 3.1: Image Input Handling and Validation** [COMPLETED]
     *   **[AI Agent]:** In `app/main.py` (`POST /stylize_image` handler):
         *   Ensure robust parsing of `multipart/form-data` for `image` (file) and `style_id` (string).
         *   Validate uploaded file:
@@ -275,12 +275,12 @@
     *   **[AI Agent]:** Commit and push.
     *   **[Human Reviewer]:** Review `styles.json` content. Review code for catalog loading, `GET /styles` implementation, and style validation in `POST /stylize_image`. Review unit tests.
 
-3.  **Task 3.3: Context-Aware Prompt Generation** [NEEDS COMPLETE REWORK]
-    *   **[AI Agent] Task 3.3.1: Define `ProjectContext` Pydantic Model.**
+3.  **Task 3.3: Context-Aware Prompt Generation** [COMPLETED]
+    *   **[AI Agent] Task 3.3.1: Define `ProjectContext` Pydantic Model.** [COMPLETED]
         *   Create `app/models.py` (if it doesn't exist).
         *   Define a Pydantic model `ProjectContext` based on the schema specified in `api_contract_mvp.md`. This will handle validation of the context object's structure and types automatically when used in FastAPI.
         *   The `POST /stylize_image` handler in `main.py` should now try to parse the `project_context_str` (if provided) into this Pydantic model. FastAPI can also do this automatically if you pass the model as a type hint to a Form field or body.
-    *   **[AI Agent] Task 3.3.2: Implement Basic Project Context Analysis Service.**
+    *   **[AI Agent] Task 3.3.2: Implement Basic Project Context Analysis Service.** [COMPLETED]
         *   Create `app/context_analysis_service.py` with a class `ContextAnalysisService`.
         *   Method `analyze(self, context: ProjectContext) -> Dict[str, any]:`
             *   Input: Validated `ProjectContext` Pydantic object.
@@ -290,7 +290,7 @@
                 *   Extract `reference_logo_image_base64` (and decode it to bytes if valid).
                 *   Extract `avoid_elements`.
             *   Output: A dictionary containing `context_summary_string`, `brand_colors_list`, `decoded_reference_logo_bytes` (or `None`), `avoid_elements_list`.
-    *   **[AI Agent] Task 3.3.3: Implement Advanced Prompt Generation Logic.**
+    *   **[AI Agent] Task 3.3.3: Implement Advanced Prompt Generation Logic.** [COMPLETED]
         *   Modify `app/main.py` (`POST /stylize_image` handler) or create a new `app/prompt_service.py`.
         *   Logic:
             1.  After all input validations (primary image, style_id, project_context object).
@@ -303,7 +303,7 @@
                 *   Consider how `brand_colors` and `avoid_elements` might be translated into prompt language (e.g., "using primary colors red, blue", "avoiding depictions of X").
                 *   This step requires careful thought on how to best combine these diverse inputs into a coherent and effective prompt for DALL-E.
             5.  The `decoded_reference_logo_bytes` will be passed separately to the OpenAI API call in Task 3.4 if image-to-image/variation is used.
-    *   **[AI Agent] Task 3.3.4: Update Logging and Unit Tests.**
+    *   **[AI Agent] Task 3.3.4: Update Logging and Unit Tests.** [COMPLETED]
         *   Log the `final_prompt` and key elements from the `project_context` that influenced it.
         *   Write comprehensive unit tests for:
             *   `ProjectContext` Pydantic model (validation).
