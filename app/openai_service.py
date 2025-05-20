@@ -1,15 +1,18 @@
-"""Service for interacting with OpenAI DALL-E 3 API for image generation."""
+"""Service for interacting with OpenAI GPT-4V and DALL-E 3 APIs for image generation."""
 
 import logging
 import os
 import base64
 import io
 import requests
-from typing import Optional, Dict, Any, Union
+import mimetypes
+from typing import Optional, Dict, Any, Union, List, Tuple
 
-from openai import OpenAI
-from openai.types.images import ImageGenerationResponse
-from openai.types import APIError, APIConnectionError, RateLimitError, BadRequestError
+from openai import OpenAI, APIError, APIConnectionError, RateLimitError, BadRequestError, Image
+from openai.types.chat import ChatCompletion
+from openai.types.chat.chat_completion import Choice as ChatCompletionChoice
+from openai.types.chat.chat_completion_message import ChatCompletionMessage
+from typing import Any
 from google.cloud import secretmanager
 
 logger = logging.getLogger(__name__)
@@ -41,15 +44,16 @@ class OpenAIInvalidRequestError(OpenAIServiceError):
 
 
 class OpenAIService:
-    """Service for interacting with the OpenAI DALL-E 3 API."""
+    """Service for interacting with the OpenAI GPT-4V and DALL-E 3 APIs."""
 
     def __init__(self):
         """Initialize the OpenAI service with API key from Secret Manager."""
         # Get the API key from Secret Manager or environment variable
         self.api_key = self._get_api_key()
         self.client = OpenAI(api_key=self.api_key)
-        self.model = "dall-e-3"  # Using the DALL-E 3 model
-        logger.info("OpenAI service initialized with DALL-E 3 model")
+        self.dalle_model = "dall-e-3"  # Using the DALL-E 3 model
+        self.vision_model = "gpt-4o"    # Using GPT-4o with vision capabilities
+        logger.info(f"OpenAI service initialized with {self.dalle_model} for image generation and {self.vision_model} for vision analysis")
 
     def _get_api_key(self) -> str:
         """Retrieve the OpenAI API key from Secret Manager or environment variable.
@@ -123,7 +127,7 @@ class OpenAIService:
             logger.info(f"Generating image from prompt: {prompt[:100]}...")
             
             response = self.client.images.generate(
-                model=self.model,
+                model=self.dalle_model,
                 prompt=prompt,
                 size="1024x1024",  # Standard size for DALL-E 3
                 quality="standard",
@@ -163,14 +167,12 @@ class OpenAIService:
             logger.error(error_msg)
             raise OpenAIServiceError(error_msg)
 
-    def generate_image_variation(self, prompt: str, reference_image_bytes: bytes) -> bytes:
-        """Generate an image variation based on a reference image and prompt.
-        
-        Note: DALL-E 3 does not directly support image variations/edits. This method uses DALL-E 2
-        for image variations which is the only model currently supported by the OpenAI API for this purpose.
+    def generate_image_from_prompt_and_reference(self, prompt: str, reference_image_bytes: bytes) -> bytes:
+        """Generate an image using a two-step process: GPT-4V to analyze the reference image and create an
+        enhanced prompt, followed by DALL-E 3 to generate a new image based on that prompt.
         
         Args:
-            prompt: The text prompt to guide the variation generation
+            prompt: The base text prompt to guide the image generation
             reference_image_bytes: The reference image as bytes
             
         Returns:
@@ -184,63 +186,19 @@ class OpenAIService:
             OpenAIServiceError: For other OpenAI API errors
         """
         try:
-            logger.info(f"Generating image variation using reference image with prompt: {prompt[:100]}...")
+            logger.info(f"Starting two-step process: GPT-4V analysis + DALL-E 3 generation with reference image and prompt: {prompt[:100]}...")
             
-            # DALL-E 3 does not support image variations/edits, so we have two options:
-            # 1. Use DALL-E 2 for create_variation or edit (which supports reference images)
-            # 2. Use DALL-E 3 for text-to-image with a detailed prompt about the reference image
+            # STEP 1: Use GPT-4V to analyze the reference image and enhance the prompt
+            logger.info("STEP 1: Analyzing reference image with GPT-4V")
+            enhanced_prompt = self._analyze_reference_image_with_gpt4v(prompt, reference_image_bytes)
             
-            # For MVP, we'll use DALL-E 2 with create_variation since it's more reliable for this use case
-            # Create a temporary file-like object from bytes
-            image_file = io.BytesIO(reference_image_bytes)
+            # STEP 2: Use DALL-E 3 with the enhanced prompt to generate a new image
+            logger.info("STEP 2: Using DALL-E 3 with enhanced prompt to generate new image")
+            logger.info(f"Enhanced prompt: {enhanced_prompt[:150]}...")
             
-            # Use DALL-E 2 for image variation (the only model supported for variations)
-            logger.info("Using DALL-E 2 for image variation (DALL-E 3 doesn't support image variations)")
-            response = self.client.images.create_variation(
-                image=image_file,
-                prompt=prompt,  # Note: The create_variation endpoint might not use the prompt parameter
-                model="dall-e-2",  # DALL-E 2 is the only supported model for variations
-                size="1024x1024",
-                n=1
-            )
+            # Call the standard generate_image_from_prompt method with the enhanced prompt
+            return self.generate_image_from_prompt(enhanced_prompt)
             
-            return self._get_image_data_from_response(response)
-            
-        except BadRequestError as e:
-            # If the API doesn't accept the prompt parameter for create_variation
-            # try again without it (standard OpenAI variation approach)
-            if "unexpected parameter" in str(e).lower() and "prompt" in str(e).lower():
-                logger.info("Retrying variation without prompt parameter")
-                try:
-                    # Reset the file pointer
-                    image_file.seek(0)
-                    
-                    # Try again without the prompt parameter
-                    response = self.client.images.create_variation(
-                        image=image_file,
-                        model="dall-e-2",
-                        size="1024x1024",
-                        n=1
-                    )
-                    
-                    return self._get_image_data_from_response(response)
-                    
-                except Exception as inner_e:
-                    # If this also fails, continue to the error handling below
-                    logger.error(f"Error in retry attempt: {str(inner_e)}")
-                    error_msg = f"Failed to generate image variation: {str(inner_e)}"
-                    raise OpenAIServiceError(error_msg)
-            
-            # Check if this is a content policy violation
-            if "content_policy_violation" in str(e).lower():
-                error_msg = f"Content policy violation: {str(e)}"
-                logger.error(error_msg)
-                raise OpenAIContentPolicyViolationError(error_msg)
-            else:
-                error_msg = f"Invalid request to OpenAI API: {str(e)}"
-                logger.error(error_msg)
-                raise OpenAIInvalidRequestError(error_msg)
-                
         except APIConnectionError as e:
             error_msg = f"Connection error with OpenAI API: {str(e)}"
             logger.error(error_msg)
@@ -251,17 +209,132 @@ class OpenAIService:
             logger.error(error_msg)
             raise OpenAIRateLimitError(error_msg)
             
+        except BadRequestError as e:
+            # Check if this is a content policy violation
+            if "content_policy_violation" in str(e).lower():
+                error_msg = f"Content policy violation: {str(e)}"
+                logger.error(error_msg)
+                raise OpenAIContentPolicyViolationError(error_msg)
+            else:
+                error_msg = f"Invalid request to OpenAI API: {str(e)}"
+                logger.error(error_msg)
+                raise OpenAIInvalidRequestError(error_msg)
+                
+        except APIError as e:
+            error_msg = f"OpenAI API error: {str(e)}"
+            logger.error(error_msg)
+            raise OpenAIServiceError(error_msg)
+            
+        except OpenAIServiceError:
+            # Re-raise any of our custom exceptions without wrapping
+            raise
+            
+        except Exception as e:
+            error_msg = f"Unexpected error in reference image processing: {str(e)}"
+            logger.error(error_msg)
+            raise OpenAIServiceError(error_msg)
+
+    def _analyze_reference_image_with_gpt4v(self, prompt: str, reference_image_bytes: bytes) -> str:
+        """Use GPT-4V to analyze the reference image and create an enhanced prompt for DALL-E 3.
+        
+        Args:
+            prompt: The base text prompt to guide the image generation
+            reference_image_bytes: The reference image as bytes
+            
+        Returns:
+            str: The enhanced prompt optimized for DALL-E 3
+            
+        Raises:
+            OpenAIAPIConnectionError: If there's a connection error with the OpenAI API
+            OpenAIRateLimitError: If rate limits are exceeded
+            OpenAIContentPolicyViolationError: If the prompt violates content policies
+            OpenAIInvalidRequestError: If the request is invalid
+            OpenAIServiceError: For other OpenAI API errors
+        """
+        try:
+            # Determine the image MIME type or default to PNG
+            mime_type = self._get_image_mime_type(reference_image_bytes)
+            
+            # Encode image to base64
+            base64_image = base64.b64encode(reference_image_bytes).decode('utf-8')
+            
+            # Format image in the required data URL format for the API
+            image_url = f"data:{mime_type};base64,{base64_image}"
+            
+            # Create the system prompt instructing GPT-4V how to analyze the image
+            system_prompt = """You are an AI visual consultant tasked with analyzing reference images to generate optimized text prompts for DALL-E 3. 
+            Your job is to carefully examine the provided reference image and the user's textual context/style information, 
+            then create a detailed, purely textual prompt for DALL-E 3 to generate a refreshed version or new interpretation 
+            of the reference image in the specified style. Focus on visual elements, composition, colors, and style 
+            while incorporating the user's style preferences. Provide ONLY the final prompt for DALL-E 3, 
+            with no explanations, introductions, or additional commentary."""
+            
+            # Create a precise user prompt that includes both the reference image and the context
+            user_prompt = f"""Analyze this reference image and create an enhanced, detailed prompt for DALL-E 3 that would 
+            generate a refreshed version of this image in the specified style. 
+            
+            Style and Context Information: {prompt}
+            
+            Provide just the enhanced prompt text with no additional explanation or formatting. Your output will be sent directly to DALL-E 3."""
+            
+            # Call the Chat Completions API with the vision-capable model
+            logger.info(f"Calling GPT-4V ({self.vision_model}) to analyze reference image and generate enhanced prompt")
+            response = self.client.chat.completions.create(
+                model=self.vision_model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {
+                        "role": "user", 
+                        "content": [
+                            {"type": "text", "text": user_prompt},
+                            {"type": "image_url", "image_url": {"url": image_url}}
+                        ]
+                    }
+                ],
+                max_tokens=1000
+            )
+            
+            # Extract the enhanced prompt from the response
+            if not response.choices or not response.choices[0].message or not response.choices[0].message.content:
+                raise OpenAIServiceError("GPT-4V returned an empty or invalid response")
+                
+            enhanced_prompt = response.choices[0].message.content.strip()
+            logger.info(f"GPT-4V analysis complete. Generated enhanced prompt: {enhanced_prompt[:100]}...")
+            
+            return enhanced_prompt
+            
+        except APIConnectionError as e:
+            error_msg = f"Connection error with OpenAI API: {str(e)}"
+            logger.error(error_msg)
+            raise OpenAIAPIConnectionError(error_msg)
+            
+        except RateLimitError as e:
+            error_msg = f"OpenAI API rate limit exceeded: {str(e)}"
+            logger.error(error_msg)
+            raise OpenAIRateLimitError(error_msg)
+            
+        except BadRequestError as e:
+            # Check if this is a content policy violation
+            if "content_policy_violation" in str(e).lower():
+                error_msg = f"Content policy violation: {str(e)}"
+                logger.error(error_msg)
+                raise OpenAIContentPolicyViolationError(error_msg)
+            else:
+                error_msg = f"Invalid request to OpenAI API: {str(e)}"
+                logger.error(error_msg)
+                raise OpenAIInvalidRequestError(error_msg)
+                
         except APIError as e:
             error_msg = f"OpenAI API error: {str(e)}"
             logger.error(error_msg)
             raise OpenAIServiceError(error_msg)
             
         except Exception as e:
-            error_msg = f"Unexpected error with OpenAI API: {str(e)}"
+            error_msg = f"Unexpected error in reference image analysis: {str(e)}"
             logger.error(error_msg)
             raise OpenAIServiceError(error_msg)
 
-    def _get_image_data_from_response(self, response: ImageGenerationResponse) -> bytes:
+    def _get_image_data_from_response(self, response: Any) -> bytes:
         """Extract image data from an OpenAI image generation response.
         
         Args:
@@ -326,3 +399,115 @@ class OpenAIService:
             error_msg = f"Error fetching image from URL {url}: {str(e)}"
             logger.error(error_msg)
             raise OpenAIServiceError(error_msg)
+            
+    def generate_image_variation(self, prompt: str, reference_image_bytes: bytes) -> bytes:
+        """Generate a variation of an existing image using DALL-E.
+        
+        Args:
+            prompt: Optional text prompt to guide the variation generation
+            reference_image_bytes: The reference image as bytes
+            
+        Returns:
+            bytes: The generated image data as bytes
+            
+        Raises:
+            OpenAIAPIConnectionError: If there's a connection error with the OpenAI API
+            OpenAIRateLimitError: If rate limits are exceeded
+            OpenAIContentPolicyViolationError: If the prompt violates content policies
+            OpenAIInvalidRequestError: If the request is invalid
+            OpenAIServiceError: For other OpenAI API errors
+        """
+        try:
+            # Prepare the image for the API
+            image_file = io.BytesIO(reference_image_bytes)
+            
+            # First try with prompt parameter (some OpenAI API versions support it)
+            try:
+                logger.info(f"Generating image variation with prompt: {prompt}")
+                response = self.client.images.create_variation(
+                    image=image_file,
+                    n=1,
+                    size="1024x1024",
+                    prompt=prompt
+                )
+            except BadRequestError as e:
+                # If 'prompt' parameter is not accepted, retry without it
+                if "unexpected parameter" in str(e).lower() and "prompt" in str(e).lower():
+                    logger.info("Retrying image variation generation without prompt parameter")
+                    image_file.seek(0)  # Reset the file pointer
+                    response = self.client.images.create_variation(
+                        image=image_file,
+                        n=1,
+                        size="1024x1024"
+                    )
+                else:
+                    # If it's another type of BadRequestError, re-raise it
+                    raise
+                    
+            # Extract and return the generated image
+            return self._get_image_data_from_response(response)
+            
+        except APIConnectionError as e:
+            error_msg = f"Connection error with OpenAI API: {str(e)}"
+            logger.error(error_msg)
+            raise OpenAIAPIConnectionError(error_msg)
+            
+        except RateLimitError as e:
+            error_msg = f"OpenAI API rate limit exceeded: {str(e)}"
+            logger.error(error_msg)
+            raise OpenAIRateLimitError(error_msg)
+            
+        except BadRequestError as e:
+            # Check if this is a content policy violation
+            if "content_policy_violation" in str(e).lower():
+                error_msg = f"Content policy violation: {str(e)}"
+                logger.error(error_msg)
+                raise OpenAIContentPolicyViolationError(error_msg)
+            else:
+                error_msg = f"Invalid request to OpenAI API: {str(e)}"
+                logger.error(error_msg)
+                raise OpenAIInvalidRequestError(error_msg)
+                
+        except APIError as e:
+            error_msg = f"OpenAI API error: {str(e)}"
+            logger.error(error_msg)
+            raise OpenAIServiceError(error_msg)
+            
+        except Exception as e:
+            error_msg = f"Unexpected error in image variation generation: {str(e)}"
+            logger.error(error_msg)
+            raise OpenAIServiceError(error_msg)
+            
+    def _get_image_mime_type(self, image_bytes: bytes) -> str:
+        """Determine the MIME type of an image from its bytes.
+        
+        Args:
+            image_bytes: The image data as bytes
+            
+        Returns:
+            str: The MIME type of the image (e.g., 'image/jpeg', 'image/png')
+        """
+        try:
+            # Create a BytesIO object from the image bytes
+            image_file = io.BytesIO(image_bytes)
+            
+            # Read the first few bytes to determine the file type
+            header = image_file.read(8)  # Usually enough bytes to identify common image formats
+            image_file.seek(0)  # Reset the file pointer to the beginning
+            
+            # Check for common image format signatures
+            if header.startswith(b'\xFF\xD8'):  # JPEG signature
+                return 'image/jpeg'
+            elif header.startswith(b'\x89PNG\r\n\x1a\n'):  # PNG signature
+                return 'image/png'
+            elif header.startswith(b'GIF87a') or header.startswith(b'GIF89a'):  # GIF signature
+                return 'image/gif'
+            elif header.startswith(b'RIFF') and header[8:12] == b'WEBP':  # WebP signature
+                return 'image/webp'
+            else:
+                # Fallback: use Python's mimetypes module to guess
+                mime_type, _ = mimetypes.guess_type('image.png')  # Default to PNG if uncertain
+                return mime_type or 'image/png'
+        except Exception as e:
+            logger.warning(f"Error determining MIME type: {str(e)}. Defaulting to 'image/png'.")
+            return 'image/png'

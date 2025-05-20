@@ -5,7 +5,6 @@ from unittest.mock import patch, MagicMock, mock_open, call
 import os
 import base64
 import io
-import requests
 import pytest
 
 # Updated imports for OpenAI SDK v1.79.0+
@@ -198,9 +197,8 @@ class TestOpenAIService(unittest.TestCase):
         """Test handling of API connection errors."""
         # Create a proper exception side effect
         def api_connection_error(*args, **kwargs):
-            # APIConnectionError constructor requires message and request parameters
-            # request must be passed as a keyword argument
-            raise APIConnectionError(message="Connection error", request={})
+            # APIConnectionError constructor only takes one argument (message)
+            raise APIConnectionError("Connection error")
             
         # Set the side effect to raise the exception
         self.mock_openai_client.images.generate.side_effect = api_connection_error
@@ -283,9 +281,8 @@ class TestOpenAIService(unittest.TestCase):
         """Test handling of API connection errors for image variations."""
         # Create a proper exception side effect
         def api_connection_error(*args, **kwargs):
-            # APIConnectionError constructor requires message and request parameters
-            # request must be passed as a keyword argument
-            raise APIConnectionError(message="Connection error", request={})
+            # APIConnectionError constructor only takes one argument (message)
+            raise APIConnectionError("Connection error")
             
         # Set the side effect to raise the exception
         self.mock_openai_client.images.create_variation.side_effect = api_connection_error
@@ -546,9 +543,8 @@ class TestOpenAIService(unittest.TestCase):
         
         # Test API connection error
         def api_connection_error(*args, **kwargs):
-            # APIConnectionError constructor requires message and request parameters
-            # request must be passed as a keyword argument
-            raise APIConnectionError(message="Connection refused", request={})
+            # APIConnectionError constructor only takes one argument (message)
+            raise APIConnectionError("Connection refused")
             
         self.mock_openai_client.chat.completions.create.side_effect = api_connection_error
         service = OpenAIService()

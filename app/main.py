@@ -379,10 +379,10 @@ async def stylize_image(
     
     # Call OpenAI DALL-E 3 to generate the image
     try:
-        # Determine whether to use text-to-image or image variation based on reference image
+        # Determine whether to use two-step process (GPT-4V + DALL-E 3) or direct DALL-E 3 based on reference image
         if decoded_reference_logo_bytes:
-            logger.info(f"Generating image variation with reference logo for request_id {request_id}")
-            image_bytes = openai_service.generate_image_variation(final_prompt, decoded_reference_logo_bytes)
+            logger.info(f"Starting two-step process: GPT-4V analysis + DALL-E 3 generation with reference logo for request_id {request_id}")
+            image_bytes = openai_service.generate_image_from_prompt_and_reference(final_prompt, decoded_reference_logo_bytes)
         else:
             logger.info(f"Generating image from prompt for request_id {request_id}")
             image_bytes = openai_service.generate_image_from_prompt(final_prompt)
