@@ -91,6 +91,7 @@ def mock_openai_service():
     mock_service = MagicMock(spec=OpenAIService)
     mock_service.generate_image_from_prompt.return_value = b'fake-image-data'
     mock_service.generate_image_from_prompt_and_reference.return_value = b'fake-image-data-with-ref'
+    mock_service.transform_image_with_style.return_value = b'fake-transformed-image-data'
     return mock_service
 
 @pytest.fixture
@@ -253,15 +254,15 @@ def test_valid_png_image(valid_png_image, test_client):
     assert data["style"] == "test_style"
     assert "stylized_image_url" in data
 
-def test_missing_image(test_client):
-    """Test that a request with missing image file returns a 400 error."""
+def test_missing_all_inputs(test_client):
+    """Test that a request with no image, prompt, or context returns a 400 error."""
     response = test_client.post(
         "/stylize_image",
         files={},
         data={"style_id": "test_style"}
     )
     assert response.status_code == 400
-    assert response.json() == {"error": "Image file is required."}
+    assert response.json() == {"error": "Either an image file, project context, or user prompt is required."}
 
 def test_missing_style_id(valid_jpeg_image, test_client):
     """Test that a request with missing style_id returns a 400 error."""
@@ -505,3 +506,91 @@ def test_invalid_base64_in_context(valid_jpeg_image, test_client, context_with_i
     assert response.status_code == 400
     assert "Invalid project_context data" in response.json()["error"]
     assert "Invalid base64 encoding" in response.json()["error"]
+
+
+# New tests for text-only generation (no image input)
+
+def test_text_only_generation_with_user_prompt(test_client):
+    """Test generation with only user prompt (no image)."""
+    response = test_client.post(
+        "/stylize_image",
+        data={
+            "style_id": "test_style",
+            "user_prompt": "A futuristic city skyline at sunset"
+        }
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "original_id" in data
+    assert data["style"] == "test_style"
+    assert "stylized_image_url" in data
+
+def test_text_only_generation_with_project_context(test_client, valid_project_context):
+    """Test generation with only project context (no image)."""
+    response = test_client.post(
+        "/stylize_image",
+        data={
+            "style_id": "test_style",
+            "project_context_str": valid_project_context
+        }
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "original_id" in data
+    assert data["style"] == "test_style"
+    assert "stylized_image_url" in data
+
+def test_text_only_generation_with_both_prompt_and_context(test_client, valid_project_context):
+    """Test generation with both user prompt and project context (no image)."""
+    response = test_client.post(
+        "/stylize_image",
+        data={
+            "style_id": "test_style",
+            "user_prompt": "A modern logo design",
+            "project_context_str": valid_project_context
+        }
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "original_id" in data
+    assert data["style"] == "test_style"
+    assert "stylized_image_url" in data
+
+def test_image_transformation_with_style(valid_jpeg_image, test_client):
+    """Test that when an image is provided, it uses the transform_image_with_style method."""
+    with patch("app.main.get_openai_service") as mock_get_openai:
+        mock_openai = MagicMock()
+        mock_openai.transform_image_with_style.return_value = b'fake-transformed-image'
+        mock_get_openai.return_value = mock_openai
+        
+        response = test_client.post(
+            "/stylize_image",
+            files={"image": ("test.jpg", valid_jpeg_image, "image/jpeg")},
+            data={
+                "style_id": "test_style",
+                "user_prompt": "Make it look like a painting"
+            }
+        )
+        
+        assert response.status_code == 200
+        # Verify that transform_image_with_style was called
+        mock_openai.transform_image_with_style.assert_called_once()
+
+def test_text_generation_with_reference_logo(test_client, project_context_with_reference_logo):
+    """Test text generation with reference logo in context (no input image)."""
+    response = test_client.post(
+        "/stylize_image",
+        data={
+            "style_id": "test_style",
+            "project_context_str": project_context_with_reference_logo
+        }
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "original_id" in data
+    assert data["style"] == "test_style"
+    assert "stylized_image_url" in data

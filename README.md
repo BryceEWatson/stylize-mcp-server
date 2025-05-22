@@ -61,7 +61,7 @@ uvicorn app.main:app --reload
 
 ## API Endpoints (MVP)
 
-- `POST /stylize_image`: Stylize an uploaded image with specified style
+- `POST /stylize_image`: Generate a stylized image from an uploaded image, text prompt, or project context
 - `GET /styles`: List available styles
 - `GET /health`: Server health check
 - `GET /mcp`: MCP server endpoint for Server-Sent Events (SSE)

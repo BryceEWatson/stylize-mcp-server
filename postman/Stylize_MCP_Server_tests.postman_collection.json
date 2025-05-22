@@ -1,0 +1,200 @@
+{
+	"info": {
+		"_postman_id": "YOUR_UNIQUE_UUID_HERE", // Postman will generate this on import
+		"name": "Stylize MCP Server API Tests",
+		"description": "A collection of requests to test the Stylize MCP Server API.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Service Endpoints",
+			"description": "Basic service health and information endpoints.",
+			"item": [
+				{
+					"name": "Get Health Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Checks the health status of the service."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Available Styles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/styles",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"styles"
+							]
+						},
+						"description": "Retrieves the list of available image stylization styles from app/styles.json."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Image Stylization Tests",
+			"description": "Tests for the core /stylize_image endpoint.",
+			"item": [
+				{
+					"name": "Stylize Image - Basic (No Project Context)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "image",
+									"description": "Select your JPEG or PNG image file here.",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "style_id",
+									"value": "van_gogh",
+									"description": "Enter a valid style_id from GET /styles (e.g., 'van_gogh', 'pixel_art', 'flat_ui_icon').",
+									"type": "text"
+								},
+								{
+									"key": "user_prompt",
+									"value": "A majestic mountain landscape at sunset",
+									"description": "(Optional) Additional user instructions.",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/stylize_image",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"stylize_image"
+							]
+						},
+						"description": "Tests basic image stylization with only an image and style_id. Remember to select an image file for the 'image' key."
+					},
+					"response": []
+				},
+				{
+					"name": "Stylize Image - With Project Context (No Reference Logo)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "image",
+									"description": "Select your JPEG or PNG image file here.",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "style_id",
+									"value": "flat_ui_icon",
+									"description": "Enter a valid style_id.",
+									"type": "text"
+								},
+								{
+									"key": "user_prompt",
+									"value": "A friendly cat icon",
+									"description": "(Optional) Additional user instructions.",
+									"type": "text"
+								},
+								{
+									"key": "project_context_str",
+									"value": "{\n    \"project_name\": \"My Cool App\",\n    \"project_description\": \"A mobile app for tracking delightful cats.\",\n    \"keywords\": [\"cat\", \"mobile\", \"fun\", \"pet care\"],\n    \"brand_colors\": [\"#FF69B4\", \"#4682B4\"],\n    \"artistic_mood\": \"playful\",\n    \"target_audience\": \"cat lovers of all ages\"\n}",
+									"description": "JSON string providing project context. Ensure this is valid JSON.",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/stylize_image",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"stylize_image"
+							]
+						},
+						"description": "Tests image stylization with project context (excluding a reference logo). Remember to select an image file."
+					},
+					"response": []
+				},
+				{
+					"name": "Stylize Image - With Project Context (And Reference Logo)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "image",
+									"description": "Select your JPEG or PNG image file here (e.g., a rough sketch for the logo).",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "style_id",
+									"value": "neumorphic_button",
+									"description": "Enter a valid style_id.",
+									"type": "text"
+								},
+								{
+									"key": "user_prompt",
+									"value": "Refresh this logo concept, make it clean and modern.",
+									"description": "(Optional) Additional user instructions for the refresh.",
+									"type": "text"
+								},
+								{
+									"key": "project_context_str",
+									"value": "{\n    \"project_name\": \"NextGen SaaS Platform\",\n    \"project_description\": \"Refreshing an existing company logo to be more modern and tech-focused.\",\n    \"artistic_mood\": \"sleek and innovative\",\n    \"brand_colors\": [\"#0052CC\", \"#FFFFFF\", \"#172B4D\"],\n    \"keywords\": [\"technology\", \"software\", \"cloud\", \"modern\"],\n    \"reference_logo_image_base64\": \"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=\"\n}",
+									"description": "JSON string providing project context including a base64 encoded reference_logo_image. Replace the base64 string with an actual small image's base64. Ensure this is valid JSON.",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/stylize_image",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"stylize_image"
+							]
+						},
+						"description": "Tests image stylization with project context including a base64 encoded reference logo. Remember to select a primary image file and replace the placeholder base64 string with actual data."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://stylize-mcp-server-997481449751.us-central1.run.app",
+			"type": "string"
+		}
+	]
+}

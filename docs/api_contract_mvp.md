@@ -8,7 +8,7 @@ This document outlines the API contract for the Minimum Viable Product (MVP) ver
 
 **Endpoint:** `POST /stylize_image`
 
-**Purpose:** Transform a user-uploaded image according to a specified style.
+**Purpose:** Generate a stylized image from an uploaded image, text prompt, or project context according to a specified style.
 
 **Request Format:**
 ```
@@ -16,9 +16,12 @@ Content-Type: multipart/form-data
 ```
 
 **Request Parameters:**
-- `image` (file, required): The primary image file to be stylized (e.g., a sketch, a photo to transform). Required. Supported formats: JPEG, PNG.
+- `image` (file, optional): An optional image file to be transformed with the specified style. Supported formats: JPEG, PNG. If not provided, the system will generate an image from text/context only.
 - `style_id` (string, required): The identifier of the style to apply. Must be a valid style ID from the style catalog.
+- `user_prompt` (string, optional): Text prompt to guide the image generation or transformation. Can be used with or without an input image.
 - `project_context` (string, optional): An optional JSON string containing structured contextual information about the project. This context will be analyzed by the server to refine the image generation prompt. If invalid JSON is provided, an error will be returned.
+
+**Note:** At least one of `image`, `user_prompt`, or `project_context` must be provided.
 
 **Response (Success - 200 OK):**
 ```json
@@ -37,8 +40,9 @@ Content-Type: multipart/form-data
 ```
 
 **Possible Error Scenarios:**
-- Invalid image format (not JPEG/PNG)
-- Image size exceeds limits
+- No input provided (neither image, user_prompt, nor project_context)
+- Invalid image format (not JPEG/PNG) when image is provided
+- Image size exceeds limits when image is provided
 - Invalid or unsupported style_id
 - Image content violates safety policy (SafeSearch)
 - Invalid `project_context` JSON format

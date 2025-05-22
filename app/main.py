@@ -231,10 +231,10 @@ async def stylize_image(
     user_prompt: str = Form(None),
     project_context_str: Optional[str] = Form(None)
 ):
-    """Stylize an uploaded image with the specified style.
+    """Stylize an uploaded image or generate from text with the specified style.
     
     Args:
-        image: The primary image file to stylize
+        image: Optional image file to stylize
         style_id: The ID of the style to apply
         user_prompt: Optional user prompt to combine with the style's prompt fragment
         project_context_str: Optional JSON string containing structured contextual information
@@ -245,11 +245,11 @@ async def stylize_image(
     Raises:
         HTTP 400 Bad Request: If validation fails for any reason
     """
-    # Input presence validation
-    if not image:
+    # Input presence validation - either image or context/prompt is required
+    if not image and not project_context_str and not user_prompt:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content={"error": "Image file is required."}
+            content={"error": "Either an image file, project context, or user prompt is required."}
         )
         
     if not style_id:
@@ -267,24 +267,26 @@ async def stylize_image(
             content={"error": f"Invalid style_id. Available styles are: {available_styles}"}
         )
     
-    # Content type validation
-    valid_content_types = ["image/jpeg", "image/png"]
-    if image.content_type not in valid_content_types:
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content={"error": "Invalid image format. Only JPEG and PNG are supported."}
-        )
-    
-    # File size validation
-    # Read the first chunk to check the size
-    content = await image.read(MAX_UPLOAD_SIZE_BYTES + 1)  # Read one more byte than the limit to check
-    await image.seek(0)  # Reset file position after reading
-    
-    if len(content) > MAX_UPLOAD_SIZE_BYTES:
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content={"error": f"Image size exceeds the limit of {MAX_UPLOAD_SIZE_MB} MB."}
-        )
+    # Image validation (only if image is provided)
+    if image:
+        # Content type validation
+        valid_content_types = ["image/jpeg", "image/png"]
+        if image.content_type not in valid_content_types:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"error": "Invalid image format. Only JPEG and PNG are supported."}
+            )
+        
+        # File size validation
+        # Read the first chunk to check the size
+        content = await image.read(MAX_UPLOAD_SIZE_BYTES + 1)  # Read one more byte than the limit to check
+        await image.seek(0)  # Reset file position after reading
+        
+        if len(content) > MAX_UPLOAD_SIZE_BYTES:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"error": f"Image size exceeds the limit of {MAX_UPLOAD_SIZE_MB} MB."}
+            )
         
     # Process project_context if provided
     project_context = None
@@ -419,34 +421,50 @@ async def stylize_image(
     if decoded_reference_logo_bytes:
         logger.info(f"Reference logo provided for request_id {request_id}, size: {len(decoded_reference_logo_bytes)} bytes")
     
-    # Get the image bytes for upload to GCS
+    # Get the image bytes for upload to GCS (if image provided)
     try:
-        # Reset the file pointer to read the image bytes
-        await image.seek(0)
-        original_image_bytes = await image.read()
+        original_image_bytes = None
+        original_blob_name = None
         
-        # Construct the blob names for GCS storage
-        original_blob_name = f"{request_id}/{image.filename}"
+        if image:
+            # Reset the file pointer to read the image bytes
+            await image.seek(0)
+            original_image_bytes = await image.read()
+            
+            # Construct the blob names for GCS storage
+            original_blob_name = f"{request_id}/{image.filename}"
+            
+            # Upload the original image to GCS
+            logger.info(f"Uploading original image to GCS for request_id {request_id}")
+            gcs_service = get_gcs_service()
+            await gcs_service.upload_image(
+                gcs_service.originals_bucket_name,
+                original_blob_name,
+                original_image_bytes,
+                image.content_type
+            )
+            logger.info(f"Original image uploaded to GCS for request_id {request_id}")
+        else:
+            logger.info(f"No input image provided for request_id {request_id}, proceeding with text-only generation")
+            gcs_service = get_gcs_service()
+        
+        # Construct the variant blob name
         variant_blob_name = f"{request_id}/{style_id}.png"  # Assuming PNG output from DALL-E 3
         
-        # Upload the original image to GCS
-        logger.info(f"Uploading original image to GCS for request_id {request_id}")
-        gcs_service = get_gcs_service()
-        await gcs_service.upload_image(
-            gcs_service.originals_bucket_name,
-            original_blob_name,
-            original_image_bytes,
-            image.content_type
-        )
-        logger.info(f"Original image uploaded to GCS for request_id {request_id}")
-        
-        # Call OpenAI DALL-E 3 to generate the image
-        # Determine whether to use two-step process (GPT-4V + DALL-E 3) or direct DALL-E 3 based on reference image
+        # Call OpenAI to generate the image
+        # Determine the generation approach based on available inputs
         openai_service = get_openai_service()
-        if decoded_reference_logo_bytes:
+        
+        if original_image_bytes:
+            # We have an input image to transform
+            logger.info(f"Transforming input image with style for request_id {request_id}")
+            stylized_image_bytes = openai_service.transform_image_with_style(original_image_bytes, final_prompt)
+        elif decoded_reference_logo_bytes:
+            # We have a reference logo but no input image
             logger.info(f"Starting two-step process: GPT-4V analysis + DALL-E 3 generation with reference logo for request_id {request_id}")
             stylized_image_bytes = openai_service.generate_image_from_prompt_and_reference(final_prompt, decoded_reference_logo_bytes)
         else:
+            # Text-only generation
             logger.info(f"Generating image from prompt for request_id {request_id}")
             stylized_image_bytes = openai_service.generate_image_from_prompt(final_prompt)
             

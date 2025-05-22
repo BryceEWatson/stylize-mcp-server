@@ -578,5 +578,125 @@ class TestOpenAIService(unittest.TestCase):
             service._analyze_reference_image_with_gpt4v(prompt, reference_image_bytes)
 
 
+    def test_transform_image_with_style_success(self):
+        """Test successful image transformation with style."""
+        # Mock the chat completion response for GPT-4V analysis
+        mock_chat_response = MagicMock(spec=ChatCompletion)
+        mock_choice = MagicMock(spec=ChatCompletionChoice)
+        mock_message = MagicMock(spec=ChatCompletionMessage)
+        mock_message.content = "A detailed DALL-E 3 prompt based on the input image with the requested style transformation"
+        mock_choice.message = mock_message
+        mock_chat_response.choices = [mock_choice]
+        
+        self.mock_openai_client.chat.completions.create.return_value = mock_chat_response
+        
+        # Mock the image generation response
+        mock_image_data = MagicMock()
+        mock_image_data.url = 'https://example.com/transformed-image.png'
+        mock_image_data.b64_json = None
+        
+        mock_response = MagicMock()
+        mock_response.data = [mock_image_data]
+        
+        self.mock_openai_client.images.generate.return_value = mock_response
+        
+        # Mock the HTTP response for fetching the image
+        mock_image_content = b'fake-transformed-image-data'
+        mock_http_response = MagicMock()
+        mock_http_response.content = mock_image_content
+        
+        with patch('app.openai_service.requests.get') as mock_get:
+            mock_get.return_value = mock_http_response
+            
+            service = OpenAIService()
+            input_image_bytes = b'input-image-data'
+            style_prompt = "transform into watercolor painting style"
+            
+            result = service.transform_image_with_style(input_image_bytes, style_prompt)
+            
+            # Verify that GPT-4V was called for analysis
+            self.mock_openai_client.chat.completions.create.assert_called_once()
+            chat_call_args = self.mock_openai_client.chat.completions.create.call_args[1]
+            self.assertEqual(chat_call_args['model'], 'gpt-4o')
+            
+            # Verify the messages structure
+            messages = chat_call_args['messages']
+            self.assertEqual(len(messages), 2)
+            self.assertEqual(messages[0]['role'], 'system')
+            self.assertIn('analyzing images', messages[0]['content'])
+            self.assertEqual(messages[1]['role'], 'user')
+            
+            # Check user message content
+            user_content = messages[1]['content']
+            self.assertEqual(len(user_content), 2)
+            self.assertEqual(user_content[0]['type'], 'text')
+            self.assertIn(style_prompt, user_content[0]['text'])
+            self.assertEqual(user_content[1]['type'], 'image_url')
+            
+            # Verify that DALL-E 3 was called with the enhanced prompt
+            self.mock_openai_client.images.generate.assert_called_once_with(
+                model='dall-e-3',
+                prompt="A detailed DALL-E 3 prompt based on the input image with the requested style transformation",
+                size='1024x1024',
+                quality='standard',
+                n=1
+            )
+            
+            # Verify the result
+            self.assertEqual(result, mock_image_content)
+
+    def test_transform_image_with_style_gpt4v_error(self):
+        """Test error handling when GPT-4V analysis fails."""
+        # Make GPT-4V analysis fail with a rate limit error
+        def rate_limit_error(*args, **kwargs):
+            # Create mock response for RateLimitError
+            mock_response = MagicMock()
+            mock_response.status_code = 429
+            mock_response.headers = {"retry-after": "60"}
+            raise RateLimitError("Rate limit exceeded", response=mock_response, body={"error": "rate_limit_exceeded"})
+            
+        self.mock_openai_client.chat.completions.create.side_effect = rate_limit_error
+        
+        service = OpenAIService()
+        input_image_bytes = b'input-image-data'
+        style_prompt = "transform into oil painting style"
+        
+        with self.assertRaises(OpenAIRateLimitError) as context:
+            service.transform_image_with_style(input_image_bytes, style_prompt)
+            
+        self.assertIn("Rate limit exceeded", str(context.exception))
+
+    def test_transform_image_with_style_dalle_error(self):
+        """Test error handling when DALL-E 3 generation fails."""
+        # Mock successful GPT-4V analysis
+        mock_chat_response = MagicMock(spec=ChatCompletion)
+        mock_choice = MagicMock(spec=ChatCompletionChoice)
+        mock_message = MagicMock(spec=ChatCompletionMessage)
+        mock_message.content = "Enhanced prompt for DALL-E 3"
+        mock_choice.message = mock_message
+        mock_chat_response.choices = [mock_choice]
+        
+        self.mock_openai_client.chat.completions.create.return_value = mock_chat_response
+        
+        # Make DALL-E 3 generation fail
+        def api_error(*args, **kwargs):
+            # Create mock request for APIError
+            mock_request = MagicMock()
+            mock_request.method = "POST"
+            mock_request.url = "https://api.openai.com/v1/images/generations"
+            raise APIError("DALL-E 3 generation failed", request=mock_request, body={"error": "api_error"})
+            
+        self.mock_openai_client.images.generate.side_effect = api_error
+        
+        service = OpenAIService()
+        input_image_bytes = b'input-image-data'
+        style_prompt = "transform into sketch style"
+        
+        with self.assertRaises(OpenAIServiceError) as context:
+            service.transform_image_with_style(input_image_bytes, style_prompt)
+            
+        self.assertIn("DALL-E 3 generation failed", str(context.exception))
+
+
 if __name__ == '__main__':
     unittest.main()

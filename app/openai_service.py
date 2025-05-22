@@ -478,6 +478,139 @@ class OpenAIService:
             logger.error(error_msg)
             raise OpenAIServiceError(error_msg)
             
+    def transform_image_with_style(self, input_image_bytes: bytes, style_prompt: str) -> bytes:
+        """Transform an input image by applying a style using GPT-4V analysis and DALL-E 3 generation.
+        
+        This method uses a two-step process:
+        1. GPT-4V analyzes the input image to understand its content
+        2. DALL-E 3 generates a new image based on the analysis and style prompt
+        
+        Args:
+            input_image_bytes: The input image to transform as bytes
+            style_prompt: The style prompt describing how to transform the image
+            
+        Returns:
+            bytes: The transformed image data as bytes
+            
+        Raises:
+            OpenAIAPIConnectionError: If there's a connection error with the OpenAI API
+            OpenAIRateLimitError: If rate limits are exceeded
+            OpenAIContentPolicyViolationError: If the content violates policies
+            OpenAIInvalidRequestError: If the request is invalid
+            OpenAIServiceError: For other OpenAI API errors
+        """
+        try:
+            logger.info(f"Transforming image with style prompt: {style_prompt[:100]}...")
+            
+            # Use GPT-4V to analyze the input image and create an enhanced prompt
+            enhanced_prompt = self._analyze_input_image_for_transformation(input_image_bytes, style_prompt)
+            
+            # Use DALL-E 3 to generate a new image based on the enhanced prompt
+            logger.info(f"Generating transformed image with enhanced prompt: {enhanced_prompt[:150]}...")
+            return self.generate_image_from_prompt(enhanced_prompt)
+            
+        except OpenAIServiceError:
+            # Re-raise any of our custom exceptions without wrapping
+            raise
+        except Exception as e:
+            error_msg = f"Unexpected error in image transformation: {str(e)}"
+            logger.error(error_msg)
+            raise OpenAIServiceError(error_msg)
+    
+    def _analyze_input_image_for_transformation(self, input_image_bytes: bytes, style_prompt: str) -> str:
+        """Use GPT-4V to analyze the input image and create an enhanced prompt for transformation.
+        
+        Args:
+            input_image_bytes: The input image as bytes
+            style_prompt: The style prompt describing how to transform the image
+            
+        Returns:
+            str: The enhanced prompt optimized for DALL-E 3
+            
+        Raises:
+            OpenAIAPIConnectionError: If there's a connection error with the OpenAI API
+            OpenAIRateLimitError: If rate limits are exceeded
+            OpenAIContentPolicyViolationError: If the content violates policies
+            OpenAIInvalidRequestError: If the request is invalid
+            OpenAIServiceError: For other OpenAI API errors
+        """
+        try:
+            # Encode the image to base64
+            base64_image = base64.b64encode(input_image_bytes).decode('utf-8')
+            
+            # Determine the MIME type of the image
+            mime_type = self._get_image_mime_type(input_image_bytes)
+            
+            # Create a message for GPT-4V with the input image
+            messages = [
+                {
+                    "role": "system",
+                    "content": "You are an expert at analyzing images and creating detailed prompts for DALL-E 3. "
+                               "Your task is to analyze the provided input image and create a prompt that will "
+                               "generate a new image with the requested style transformation while preserving "
+                               "the essential elements and composition of the original."
+                },
+                {
+                    "role": "user", 
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": f"Analyze this image and create a DALL-E 3 prompt that transforms it according to this style: {style_prompt}. "
+                                    f"The prompt should maintain the core subject matter and composition while applying the requested style. "
+                                    f"Be specific about visual elements, colors, textures, and artistic techniques."
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{mime_type};base64,{base64_image}"
+                            }
+                        }
+                    ]
+                }
+            ]
+            
+            logger.info("Analyzing input image with GPT-4V for transformation")
+            response = self.client.chat.completions.create(
+                model=self.vision_model,
+                messages=messages,
+                max_tokens=300  # Enough for a detailed prompt
+            )
+            
+            enhanced_prompt = response.choices[0].message.content.strip()
+            logger.info(f"GPT-4V analysis complete. Generated transformation prompt: {enhanced_prompt[:100]}...")
+            
+            return enhanced_prompt
+            
+        except APIConnectionError as e:
+            error_msg = f"Connection error with OpenAI API: {str(e)}"
+            logger.error(error_msg)
+            raise OpenAIAPIConnectionError(error_msg)
+            
+        except RateLimitError as e:
+            error_msg = f"OpenAI API rate limit exceeded: {str(e)}"
+            logger.error(error_msg)
+            raise OpenAIRateLimitError(error_msg)
+            
+        except BadRequestError as e:
+            if "content_policy_violation" in str(e).lower():
+                error_msg = f"Content policy violation: {str(e)}"
+                logger.error(error_msg)
+                raise OpenAIContentPolicyViolationError(error_msg)
+            else:
+                error_msg = f"Invalid request to OpenAI API: {str(e)}"
+                logger.error(error_msg)
+                raise OpenAIInvalidRequestError(error_msg)
+                
+        except APIError as e:
+            error_msg = f"OpenAI API error: {str(e)}"
+            logger.error(error_msg)
+            raise OpenAIServiceError(error_msg)
+            
+        except Exception as e:
+            error_msg = f"Unexpected error in input image analysis: {str(e)}"
+            logger.error(error_msg)
+            raise OpenAIServiceError(error_msg)
+
     def _get_image_mime_type(self, image_bytes: bytes) -> str:
         """Determine the MIME type of an image from its bytes.
         
