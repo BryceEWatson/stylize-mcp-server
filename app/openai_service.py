@@ -97,7 +97,25 @@ class OpenAIService:
             
             # Access the secret
             response = client.access_secret_version(name=resource_name)
-            api_key = response.payload.data.decode("UTF-8")
+            # Decode with explicit UTF-8 and handle BOM
+            raw_data = response.payload.data
+            # First decode as UTF-8
+            api_key = raw_data.decode("UTF-8")
+            
+            # Remove BOM (Byte Order Mark) if present
+            if api_key.startswith('\ufeff'):
+                api_key = api_key[1:]
+                logger.warning("Removed BOM character from API key")
+            
+            # Also handle UTF-8 BOM at byte level if present
+            if raw_data.startswith(b'\xef\xbb\xbf'):
+                api_key = raw_data[3:].decode("UTF-8")
+                logger.warning("Removed UTF-8 BOM from API key at byte level")
+            
+            # Strip any whitespace and ensure it's ASCII-safe
+            api_key = api_key.strip()
+            # Ensure the key contains only ASCII characters
+            api_key = api_key.encode('ascii', 'ignore').decode('ascii')
             
             logger.info(f"Successfully retrieved OpenAI API key from Secret Manager")
             return api_key
