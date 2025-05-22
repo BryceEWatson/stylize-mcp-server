@@ -1,9 +1,9 @@
 """Unit tests for the main application module."""
 
 import io
-import os
 import json
 import sys
+import os
 import pytest
 import base64
 from unittest.mock import patch, MagicMock
@@ -14,10 +14,106 @@ from fastapi.responses import JSONResponse
 # Add the project root to the Python path to enable imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+# Import modules without triggering service initialization
+# Import from app.main first AFTER setting environment variables
 from app.main import app, MAX_UPLOAD_SIZE_MB, MAX_UPLOAD_SIZE_BYTES, stylize_image
+from app.main import get_style_service, get_context_analysis_service, get_openai_service, get_gcs_service
 from app.styles_service import StyleService
 from app.models import ProjectContext
 from app.context_analysis_service import ContextAnalysisService
+from app.openai_service import (
+    OpenAIService, 
+    OpenAIServiceError, 
+    OpenAIAPIConnectionError, 
+    OpenAIRateLimitError, 
+    OpenAIContentPolicyViolationError,
+    OpenAIInvalidRequestError
+)
+from app.gcs_service import (
+    GcsService,
+    GcsServiceError,
+    GcsBucketNotFoundError,
+    GcsUploadError,
+    GcsSignedUrlError
+)
+
+# Create a fixture to set environment variables for the entire test session
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_environment():
+    """Setup environment variables needed by the tests."""
+    # Set environment variables for service initialization
+    os.environ['OPENAI_API_KEY_SECRET_PATH'] = 'fake/path/to/secret'
+    os.environ['GCP_PROJECT_ID'] = 'test-project-id'
+    os.environ['OPENAI_API_KEY'] = 'fake_api_key_for_testing'
+    # No need to yield anything as these are module-level environment variables
+
+# Create fixtures for the mocked services for injection into the main app
+@pytest.fixture
+def mock_style_service():
+    """Create a mock StyleService."""
+    mock_service = MagicMock(spec=StyleService)
+    mock_service.get_all_styles.return_value = TEST_STYLES
+    mock_service.get_style_by_id.side_effect = lambda style_id: next((s for s in TEST_STYLES if s['id'] == style_id), None)
+    mock_service.is_valid_style_id.side_effect = lambda style_id: any(s['id'] == style_id for s in TEST_STYLES)
+    mock_service.get_available_style_ids.return_value = [s['id'] for s in TEST_STYLES]
+    return mock_service
+
+@pytest.fixture
+def mock_context_analysis_service():
+    """Create a mock ContextAnalysisService."""
+    mock_service = MagicMock(spec=ContextAnalysisService)
+    
+    # Setup the analyze method to return a basic result
+    def analyze_side_effect(context):
+        result = {
+            "context_summary_string": "Test context summary",
+            "brand_colors_list": context.brand_colors if context.brand_colors else [],
+            "avoid_elements_list": context.avoid_elements if context.avoid_elements else []
+        }
+        
+        # Handle reference_logo_image_base64 safely
+        if context.reference_logo_image_base64:
+            try:
+                result["decoded_reference_logo_bytes"] = base64.b64decode(context.reference_logo_image_base64)
+            except Exception as e:
+                result["decoded_reference_logo_bytes"] = None
+        else:
+            result["decoded_reference_logo_bytes"] = None
+            
+        return result
+    
+    mock_service.analyze.side_effect = analyze_side_effect
+    return mock_service
+
+@pytest.fixture
+def mock_openai_service():
+    """Create a mock OpenAIService."""
+    mock_service = MagicMock(spec=OpenAIService)
+    mock_service.generate_image_from_prompt.return_value = b'fake-image-data'
+    mock_service.generate_image_from_prompt_and_reference.return_value = b'fake-image-data-with-ref'
+    return mock_service
+
+@pytest.fixture
+def mock_gcs_service():
+    """Create a mock GcsService."""
+    mock_service = MagicMock(spec=GcsService)
+    
+    # Create async mocks for the async methods
+    async def mock_upload_image(*args, **kwargs):
+        return None
+        
+    async def mock_generate_signed_url(*args, **kwargs):
+        return 'https://storage.googleapis.com/test-bucket/test-image.png?signed=abc123'
+    
+    # Assign the async mocks to the service methods
+    mock_service.upload_image = mock_upload_image
+    mock_service.generate_signed_url = mock_generate_signed_url
+    
+    # Set bucket name properties
+    mock_service.originals_bucket_name = 'test-originals-bucket'
+    mock_service.variants_bucket_name = 'test-variants-bucket'
+    
+    return mock_service
 
 # Sample test styles data
 TEST_STYLES = [
@@ -36,8 +132,9 @@ TEST_STYLES = [
 ]
 
 # Initialize test client with mocked dependencies
-@pytest.fixture(scope="module")
-def test_client():
+@pytest.fixture
+def test_client(mock_style_service, mock_context_analysis_service, mock_openai_service, mock_gcs_service):
+    """Create a test client with mocked service dependencies."""
     # Create a modified version of the stylize_image endpoint that enforces proper base64 validation
     original_stylize_image = app.routes[2].endpoint  # Keep a reference to the original endpoint
     
@@ -63,43 +160,18 @@ def test_client():
     # Replace the endpoint in the app for testing
     app.routes[2].endpoint = patched_stylize_image
     
-    # Patch the StyleService to return our test styles
-    with patch.object(StyleService, "_load_styles"):
-        style_service_mock = StyleService()
-        style_service_mock.styles = TEST_STYLES
-        style_service_mock.styles_by_id = {style["id"]: style for style in TEST_STYLES}
+    # Patch the service getter functions to return our mocks
+    with patch("app.main.get_style_service", return_value=mock_style_service), \
+         patch("app.main.get_context_analysis_service", return_value=mock_context_analysis_service), \
+         patch("app.main.get_openai_service", return_value=mock_openai_service), \
+         patch("app.main.get_gcs_service", return_value=mock_gcs_service):
         
-        # Create a mock for the context analysis service
-        context_analysis_service_mock = MagicMock(spec=ContextAnalysisService)
-        
-        # Setup the analyze method to return a basic result
-        def analyze_side_effect(context):
-            # This should never execute if the ProjectContext validation has failed
-            # But to be safe, we'll add proper try/except handling
-            result = {
-                "context_summary_string": "Test context summary",
-                "brand_colors_list": context.brand_colors if context.brand_colors else [],
-                "avoid_elements_list": context.avoid_elements if context.avoid_elements else []
-            }
-            
-            # Handle reference_logo_image_base64 safely
-            if context.reference_logo_image_base64:
-                try:
-                    result["decoded_reference_logo_bytes"] = base64.b64decode(context.reference_logo_image_base64)
-                except Exception as e:
-                    # In a real service, we'd log this error, but here we'll just set to None
-                    result["decoded_reference_logo_bytes"] = None
-            else:
-                result["decoded_reference_logo_bytes"] = None
-                
-            return result
-        
-        context_analysis_service_mock.analyze.side_effect = analyze_side_effect
-        
-        # Patch both services in the main app
-        with patch("app.main.style_service", style_service_mock), \
-             patch("app.main.context_analysis_service", context_analysis_service_mock):
-            yield TestClient(app)
+        # Create the test client
+        client = TestClient(app)
+        yield client
+    
+    # Clean up - restore the original endpoint
+    app.routes[2].endpoint = original_stylize_image
 
 # Test fixtures
 @pytest.fixture

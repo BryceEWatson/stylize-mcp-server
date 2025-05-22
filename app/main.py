@@ -25,6 +25,13 @@ from app.openai_service import (
     OpenAIContentPolicyViolationError,
     OpenAIInvalidRequestError
 )
+from app.gcs_service import (
+    GcsService,
+    GcsServiceError,
+    GcsBucketNotFoundError,
+    GcsUploadError,
+    GcsSignedUrlError
+)
 
 # Setup startup error handling and logging
 def log_startup_error(e, context="general"):
@@ -66,32 +73,64 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# Initialize the style service
-try:
-    style_service = StyleService()
-    logger.info(f"Loaded {len(style_service.get_all_styles())} styles from catalog")
-except Exception as e:
-    log_startup_error(e, "style_service_initialization")
-    logger.error(f"Failed to initialize style catalog: {str(e)}")
-    raise
+# Service instances (initialized lazily via getters)
+_style_service = None
+_context_analysis_service = None
+_openai_service = None
+_gcs_service = None
 
-# Initialize the context analysis service
-try:
-    context_analysis_service = ContextAnalysisService()
-    logger.info("Context analysis service initialized")
-except Exception as e:
-    log_startup_error(e, "context_analysis_service_initialization")
-    logger.error(f"Failed to initialize context analysis service: {str(e)}")
-    raise
+# Getter functions for services
+def get_style_service():
+    """Get or initialize the style service."""
+    global _style_service
+    if _style_service is None:
+        try:
+            _style_service = StyleService()
+            logger.info(f"Loaded {len(_style_service.get_all_styles())} styles from catalog")
+        except Exception as e:
+            log_startup_error(e, "style_service_initialization")
+            logger.error(f"Failed to initialize style catalog: {str(e)}")
+            raise
+    return _style_service
 
-# Initialize the OpenAI service
-try:
-    openai_service = OpenAIService()
-    logger.info("OpenAI service initialized successfully")
-except Exception as e:
-    log_startup_error(e, "openai_service_initialization")
-    logger.error(f"Failed to initialize OpenAI service: {str(e)}")
-    raise
+def get_context_analysis_service():
+    """Get or initialize the context analysis service."""
+    global _context_analysis_service
+    if _context_analysis_service is None:
+        try:
+            _context_analysis_service = ContextAnalysisService()
+            logger.info("Context analysis service initialized")
+        except Exception as e:
+            log_startup_error(e, "context_analysis_service_initialization")
+            logger.error(f"Failed to initialize context analysis service: {str(e)}")
+            raise
+    return _context_analysis_service
+
+def get_openai_service():
+    """Get or initialize the OpenAI service."""
+    global _openai_service
+    if _openai_service is None:
+        try:
+            _openai_service = OpenAIService()
+            logger.info("OpenAI service initialized successfully")
+        except Exception as e:
+            log_startup_error(e, "openai_service_initialization")
+            logger.error(f"Failed to initialize OpenAI service: {str(e)}")
+            raise
+    return _openai_service
+
+def get_gcs_service():
+    """Get or initialize the GCS service."""
+    global _gcs_service
+    if _gcs_service is None:
+        try:
+            _gcs_service = GcsService()
+            logger.info("GCS service initialized successfully")
+        except Exception as e:
+            log_startup_error(e, "gcs_service_initialization")
+            logger.error(f"Failed to initialize GCS service: {str(e)}")
+            raise
+    return _gcs_service
 
 # Include the MCP router
 try:
@@ -220,6 +259,7 @@ async def stylize_image(
         )
     
     # Style ID validation
+    style_service = get_style_service()
     if not style_service.is_valid_style_id(style_id):
         available_styles = style_service.get_available_style_ids()
         return JSONResponse(
@@ -322,6 +362,7 @@ async def stylize_image(
                         content={"error": f"Invalid project_context data: Invalid base64 encoding: {str(e)}"}
                     )
                     
+            context_analysis_service = get_context_analysis_service()
             context_analysis_result = context_analysis_service.analyze(project_context)
             logger.info(f"Successfully analyzed project context")
         except Exception as e:
@@ -333,6 +374,7 @@ async def stylize_image(
     logger.info(f"Received valid stylize_image request with style_id: {style_id}")
     
     # Get the selected style
+    style_service = get_style_service()
     style = style_service.get_style_by_id(style_id)
     
     # Construct final prompt using context-aware prompt generation
@@ -377,24 +419,65 @@ async def stylize_image(
     if decoded_reference_logo_bytes:
         logger.info(f"Reference logo provided for request_id {request_id}, size: {len(decoded_reference_logo_bytes)} bytes")
     
-    # Call OpenAI DALL-E 3 to generate the image
+    # Get the image bytes for upload to GCS
     try:
+        # Reset the file pointer to read the image bytes
+        await image.seek(0)
+        original_image_bytes = await image.read()
+        
+        # Construct the blob names for GCS storage
+        original_blob_name = f"{request_id}/{image.filename}"
+        variant_blob_name = f"{request_id}/{style_id}.png"  # Assuming PNG output from DALL-E 3
+        
+        # Upload the original image to GCS
+        logger.info(f"Uploading original image to GCS for request_id {request_id}")
+        gcs_service = get_gcs_service()
+        await gcs_service.upload_image(
+            gcs_service.originals_bucket_name,
+            original_blob_name,
+            original_image_bytes,
+            image.content_type
+        )
+        logger.info(f"Original image uploaded to GCS for request_id {request_id}")
+        
+        # Call OpenAI DALL-E 3 to generate the image
         # Determine whether to use two-step process (GPT-4V + DALL-E 3) or direct DALL-E 3 based on reference image
+        openai_service = get_openai_service()
         if decoded_reference_logo_bytes:
             logger.info(f"Starting two-step process: GPT-4V analysis + DALL-E 3 generation with reference logo for request_id {request_id}")
-            image_bytes = openai_service.generate_image_from_prompt_and_reference(final_prompt, decoded_reference_logo_bytes)
+            stylized_image_bytes = openai_service.generate_image_from_prompt_and_reference(final_prompt, decoded_reference_logo_bytes)
         else:
             logger.info(f"Generating image from prompt for request_id {request_id}")
-            image_bytes = openai_service.generate_image_from_prompt(final_prompt)
+            stylized_image_bytes = openai_service.generate_image_from_prompt(final_prompt)
             
         # Log successful image generation
-        logger.info(f"Successfully generated image data for request_id {request_id}, size: {len(image_bytes)} bytes")
+        logger.info(f"Successfully generated image data for request_id {request_id}, size: {len(stylized_image_bytes)} bytes")
         
-        # For now, return a placeholder URL until GCS upload is implemented in Task 3.5
+        # Upload the stylized image to GCS
+        logger.info(f"Uploading stylized image to GCS for request_id {request_id}")
+        # We've already got the gcs_service instance above
+        await gcs_service.upload_image(
+            gcs_service.variants_bucket_name,
+            variant_blob_name,
+            stylized_image_bytes,
+            "image/png"  # DALL-E 3 outputs PNG format
+        )
+        logger.info(f"Stylized image uploaded to GCS for request_id {request_id}")
+        
+        # Generate a signed URL for the stylized image
+        logger.info(f"Generating signed URL for stylized image for request_id {request_id}")
+        # We've already got the gcs_service instance above
+        stylized_image_url = await gcs_service.generate_signed_url(
+            gcs_service.variants_bucket_name,
+            variant_blob_name
+        )
+        logger.info(f"Generated signed URL for stylized image for request_id {request_id}: {stylized_image_url}")
+        
+        # Return the response with the signed URL
         return {
             "original_id": request_id,
             "style": style_id,
-            "stylized_image_url": f"http://example.com/placeholder_{request_id}.jpg"
+            "stylized_image_url": stylized_image_url
         }
         
     except OpenAIContentPolicyViolationError as e:
@@ -453,6 +536,7 @@ async def get_styles():
     Returns:
         JSON array of available styles
     """
+    style_service = get_style_service()
     return style_service.get_all_styles()
 
 # The MCP endpoint is now handled by the router included above

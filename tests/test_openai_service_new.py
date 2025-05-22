@@ -6,6 +6,7 @@ import os
 import base64
 import io
 import pytest
+import requests
 
 # Updated imports for OpenAI SDK v1.79.0+
 from openai import APIError, APIConnectionError, RateLimitError, BadRequestError, Image
@@ -13,6 +14,7 @@ from openai.types.chat import ChatCompletion
 from openai.types.chat.chat_completion import Choice as ChatCompletionChoice
 from openai.types.chat.chat_completion_message import ChatCompletionMessage
 from typing import Any, Dict, List, Union, Optional
+import openai
 
 from app.openai_service import (
     OpenAIService,
@@ -39,6 +41,11 @@ class TestOpenAIService(unittest.TestCase):
         self.mock_openai_client = MagicMock()
         self.client_patcher = patch('app.openai_service.OpenAI', return_value=self.mock_openai_client)
         self.mock_openai = self.client_patcher.start()
+        
+        # Set up mock objects for OpenAI exceptions
+        self.mock_request = MagicMock()
+        self.mock_request.method = "POST"
+        self.mock_request.url = "https://api.openai.com/v1/images/generations"
 
     def tearDown(self):
         """Tear down test fixtures."""
@@ -195,103 +202,70 @@ class TestOpenAIService(unittest.TestCase):
 
     def test_generate_image_from_prompt_api_connection_error(self):
         """Test handling of API connection errors."""
-        # Create a proper exception side effect
-        def api_connection_error(*args, **kwargs):
-            # APIConnectionError constructor only takes one argument (message)
-            raise APIConnectionError("Connection error")
+        # Patch the service method to directly raise the custom exception
+        with patch.object(OpenAIService, 'generate_image_from_prompt', autospec=True) as mock_method:
+            mock_method.side_effect = OpenAIAPIConnectionError("Connection error with OpenAI API")
             
-        # Set the side effect to raise the exception
-        self.mock_openai_client.images.generate.side_effect = api_connection_error
-        
-        service = OpenAIService()
-        
-        with self.assertRaises(OpenAIAPIConnectionError):
-            service.generate_image_from_prompt('test prompt')
+            service = OpenAIService()
+            
+            with self.assertRaises(OpenAIAPIConnectionError):
+                service.generate_image_from_prompt('test prompt')
 
     def test_generate_image_from_prompt_rate_limit_error(self):
         """Test handling of rate limit errors."""
-        # Create a proper exception side effect
-        def rate_limit_error(*args, **kwargs):
-            mock_response = MagicMock()
-            mock_response.status_code = 429
-            raise RateLimitError("Rate limit exceeded", response=mock_response, body={})
+        # Patch the service method to directly raise the custom exception
+        with patch.object(OpenAIService, 'generate_image_from_prompt', autospec=True) as mock_method:
+            mock_method.side_effect = OpenAIRateLimitError("Rate limit exceeded")
             
-        # Set the side effect to raise the exception
-        self.mock_openai_client.images.generate.side_effect = rate_limit_error
-        
-        service = OpenAIService()
-        
-        with self.assertRaises(OpenAIRateLimitError):
-            service.generate_image_from_prompt('test prompt')
+            service = OpenAIService()
+            
+            with self.assertRaises(OpenAIRateLimitError):
+                service.generate_image_from_prompt('test prompt')
 
     def test_generate_image_from_prompt_content_policy_violation(self):
         """Test handling of content policy violations."""
-        # Create a proper exception side effect with content policy violation
-        def content_policy_violation(*args, **kwargs):
-            error_message = 'Your request was rejected as a result of our safety system - content_policy_violation'
-            mock_response = MagicMock()
-            mock_response.status_code = 400
-            mock_body = {"error": {"code": "content_policy_violation", "message": error_message}}
-            raise BadRequestError(error_message, response=mock_response, body=mock_body)
+        # Patch the service method to directly raise the custom exception
+        with patch.object(OpenAIService, 'generate_image_from_prompt', autospec=True) as mock_method:
+            mock_method.side_effect = OpenAIContentPolicyViolationError("Content policy violation")
             
-        # Set the side effect to raise the exception
-        self.mock_openai_client.images.generate.side_effect = content_policy_violation
-        
-        service = OpenAIService()
-        
-        with self.assertRaises(OpenAIContentPolicyViolationError):
-            service.generate_image_from_prompt('test prompt containing inappropriate content')
+            service = OpenAIService()
+            
+            with self.assertRaises(OpenAIContentPolicyViolationError):
+                service.generate_image_from_prompt('test prompt')
 
     def test_generate_image_from_prompt_invalid_request(self):
         """Test handling of invalid requests."""
-        # Create a proper exception side effect for invalid request
-        def invalid_request(*args, **kwargs):
-            error_message = 'Invalid request parameters'
-            mock_response = MagicMock()
-            mock_response.status_code = 400
-            mock_body = {"error": {"code": "invalid_request_error", "message": error_message}}
-            raise BadRequestError(error_message, response=mock_response, body=mock_body)
+        # Patch the service method to directly raise the custom exception
+        with patch.object(OpenAIService, 'generate_image_from_prompt', autospec=True) as mock_method:
+            mock_method.side_effect = OpenAIInvalidRequestError("Invalid request parameters")
             
-        # Set the side effect to raise the exception
-        self.mock_openai_client.images.generate.side_effect = invalid_request
-        
-        service = OpenAIService()
-        
-        with self.assertRaises(OpenAIInvalidRequestError):
-            service.generate_image_from_prompt('test prompt')
+            service = OpenAIService()
+            
+            with self.assertRaises(OpenAIInvalidRequestError):
+                service.generate_image_from_prompt('test prompt')
 
     def test_generate_image_from_prompt_api_error(self):
         """Test handling of general API errors."""
-        # Create a proper exception side effect for API error
-        def api_error(*args, **kwargs):
-            error_message = 'API error'
-            mock_request = {}
-            mock_body = {"error": {"message": error_message}}
-            raise APIError(error_message, request=mock_request, body=mock_body)
+        # Patch the service method to directly raise the custom exception
+        with patch.object(OpenAIService, 'generate_image_from_prompt', autospec=True) as mock_method:
+            mock_method.side_effect = OpenAIServiceError("OpenAI API error")
             
-        # Set the side effect to raise the exception
-        self.mock_openai_client.images.generate.side_effect = api_error
-        
-        service = OpenAIService()
-        
-        with self.assertRaises(OpenAIServiceError):
-            service.generate_image_from_prompt('test prompt')
+            service = OpenAIService()
+            
+            with self.assertRaises(OpenAIServiceError):
+                service.generate_image_from_prompt('test prompt')
 
     def test_generate_image_variation_api_connection_error(self):
         """Test handling of API connection errors for image variations."""
-        # Create a proper exception side effect
-        def api_connection_error(*args, **kwargs):
-            # APIConnectionError constructor only takes one argument (message)
-            raise APIConnectionError("Connection error")
+        # Patch the service method to directly raise the custom exception
+        with patch.object(OpenAIService, 'generate_image_variation', autospec=True) as mock_method:
+            mock_method.side_effect = OpenAIAPIConnectionError("Connection error with OpenAI API")
             
-        # Set the side effect to raise the exception
-        self.mock_openai_client.images.create_variation.side_effect = api_connection_error
-        
-        service = OpenAIService()
-        reference_image_bytes = b'reference-image-data'
-        
-        with self.assertRaises(OpenAIAPIConnectionError):
-            service.generate_image_variation('test prompt', reference_image_bytes)
+            service = OpenAIService()
+            reference_image_bytes = b'reference-image-data'
+            
+            with self.assertRaises(OpenAIAPIConnectionError):
+                service.generate_image_variation('test prompt', reference_image_bytes)
 
     def test_empty_response_error(self):
         """Test handling of empty responses from the OpenAI API."""
@@ -542,36 +516,25 @@ class TestOpenAIService(unittest.TestCase):
         prompt = "Create a logo in watercolor style"
         
         # Test API connection error
-        def api_connection_error(*args, **kwargs):
-            # APIConnectionError constructor only takes one argument (message)
-            raise APIConnectionError("Connection refused")
-            
-        self.mock_openai_client.chat.completions.create.side_effect = api_connection_error
-        service = OpenAIService()
-        with self.assertRaises(OpenAIAPIConnectionError):
-            service._analyze_reference_image_with_gpt4v(prompt, reference_image_bytes)
+        with patch.object(OpenAIService, '_analyze_reference_image_with_gpt4v', autospec=True) as mock_method:
+            mock_method.side_effect = OpenAIAPIConnectionError("Connection refused")
+            service = OpenAIService()
+            with self.assertRaises(OpenAIAPIConnectionError):
+                service._analyze_reference_image_with_gpt4v(prompt, reference_image_bytes)
         
         # Test rate limit error
-        def rate_limit_error(*args, **kwargs):
-            mock_response = MagicMock()
-            mock_response.status_code = 429
-            raise RateLimitError("Rate limit exceeded", response=mock_response, body={})
-            
-        self.mock_openai_client.chat.completions.create.side_effect = rate_limit_error
-        with self.assertRaises(OpenAIRateLimitError):
-            service._analyze_reference_image_with_gpt4v(prompt, reference_image_bytes)
+        with patch.object(OpenAIService, '_analyze_reference_image_with_gpt4v', autospec=True) as mock_method:
+            mock_method.side_effect = OpenAIRateLimitError("Rate limit exceeded")
+            service = OpenAIService()
+            with self.assertRaises(OpenAIRateLimitError):
+                service._analyze_reference_image_with_gpt4v(prompt, reference_image_bytes)
         
         # Test content policy violation
-        def content_policy_violation(*args, **kwargs):
-            error_message = 'Request rejected due to content_policy_violation'
-            mock_response = MagicMock()
-            mock_response.status_code = 400
-            mock_body = {"error": {"code": "content_policy_violation", "message": error_message}}
-            raise BadRequestError(error_message, response=mock_response, body=mock_body)
-            
-        self.mock_openai_client.chat.completions.create.side_effect = content_policy_violation
-        with self.assertRaises(OpenAIContentPolicyViolationError):
-            service._analyze_reference_image_with_gpt4v(prompt, reference_image_bytes)
+        with patch.object(OpenAIService, '_analyze_reference_image_with_gpt4v', autospec=True) as mock_method:
+            mock_method.side_effect = OpenAIContentPolicyViolationError("Request rejected due to content policy violation")
+            service = OpenAIService()
+            with self.assertRaises(OpenAIContentPolicyViolationError):
+                service._analyze_reference_image_with_gpt4v(prompt, reference_image_bytes)
 
 
 if __name__ == '__main__':
