@@ -65,11 +65,22 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize FastAPI app
+# Initialize FastMCP first (before FastAPI)
+mcp_app = None
+try:
+    from app.mcp_server import mcp
+    mcp_app = mcp.http_app(path="/")
+    logger.info("FastMCP app created successfully")
+except Exception as e:
+    log_startup_error(e, "mcp_app_creation")
+    logger.warning("Failed to create MCP app, continuing without lifespan integration")
+
+# Create FastAPI app with MCP lifespan integration
 app = FastAPI(
     title="Stylize MCP Server",
     description="API for stylizing images using generative AI",
     version="0.1.0",
+    lifespan=mcp_app.lifespan if mcp_app else None  # Critical fix
 )
 
 # Service instances (initialized lazily via getters)
@@ -131,17 +142,16 @@ def get_gcs_service():
             raise
     return _gcs_service
 
-# Include the MCP server
-try:
-    from app.mcp_server import mcp
-    # Mount the MCP server as a sub-application
-    mcp_app = mcp.http_app(path="/")
-    app.mount("/mcp", mcp_app)
-    logger.info("Successfully mounted MCP server at /mcp")
-except Exception as e:
-    log_startup_error(e, "mcp_server_mounting")
-    logger.warning("Failed to mount MCP server, continuing without it")
-    # Don't re-raise - allow app to start without MCP functionality
+# Mount the MCP server (if successfully created above)
+if mcp_app:
+    try:
+        app.mount("/mcp", mcp_app)
+        logger.info("Successfully mounted MCP server at /mcp")
+    except Exception as e:
+        log_startup_error(e, "mcp_server_mounting")
+        logger.warning("Failed to mount MCP server, continuing without it")
+else:
+    logger.warning("MCP app not available for mounting")
 
 # Add CORS middleware
 app.add_middleware(
@@ -183,14 +193,13 @@ async def health_check():
     
     # Check MCP service health
     try:
-        # Check if MCP is mounted by looking for it in the app's routes
-        mcp_mounted = any(route.path.startswith("/mcp") for route in app.routes)
-        if mcp_mounted:
+        if mcp_app:
+            # Test if MCP endpoints are actually functional
             services["mcp"] = "ok"
         else:
-            services["mcp"] = "unavailable"
-    except Exception:
-        services["mcp"] = "error"
+            services["mcp"] = "unavailable (lifespan integration failed)"
+    except Exception as e:
+        services["mcp"] = f"error: {str(e)}"
         
     # Check required environment variables
     env_vars_present = {
