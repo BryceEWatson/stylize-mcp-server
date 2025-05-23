@@ -45,6 +45,13 @@ resource "google_project_iam_member" "stylize_mcp_secret_accessor" {
   member  = "serviceAccount:${google_service_account.stylize_mcp_sa.email}"
 }
 
+# Service Account Token Creator role for generating signed URLs
+resource "google_project_iam_member" "stylize_mcp_token_creator" {
+  project = var.gcp_project_id
+  role    = "roles/iam.serviceAccountTokenCreator"
+  member  = "serviceAccount:${google_service_account.stylize_mcp_sa.email}"
+}
+
 resource "google_service_account_iam_member" "stylize_mcp_sa_actas_self" {
   service_account_id = google_service_account.stylize_mcp_sa.name
   role               = "roles/iam.serviceAccountUser"

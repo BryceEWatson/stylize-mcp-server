@@ -7,6 +7,8 @@ from typing import Optional
 
 from google.cloud import storage
 from google.cloud.exceptions import GoogleCloudError
+from google.auth import default
+from google.auth.impersonated_credentials import Credentials as ImpersonatedCredentials
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +43,9 @@ class GcsService:
         on Google Cloud Platform. For local development, ensure you have set up
         ADC via gcloud CLI (gcloud auth application-default login).
         
+        For signed URL generation on Cloud Run, we use impersonated credentials
+        to work around the token-only credential limitation.
+        
         Bucket names are derived from environment variables or constructed using
         the project ID if not explicitly set.
         """
@@ -50,6 +55,10 @@ class GcsService:
             
             # Get the project ID - used for constructing default bucket names
             self.project_id = os.environ.get('GCP_PROJECT_ID', self.client.project)
+            
+            # Set up credentials for signed URL generation
+            # On Cloud Run, we need to use impersonated credentials for signing
+            self._setup_signing_credentials()
             
             # Determine bucket names from environment variables or construct them
             self.originals_bucket_name = os.environ.get(
@@ -68,6 +77,35 @@ class GcsService:
             error_msg = f"Failed to initialize GCS service: {str(e)}"
             logger.error(error_msg)
             raise GcsServiceError(error_msg)
+
+    def _setup_signing_credentials(self):
+        """Set up credentials for signed URL generation.
+        
+        On Cloud Run, we use impersonated credentials to enable signing operations.
+        For local development, we try to use the default credentials.
+        """
+        try:
+            # Get default credentials
+            credentials, _ = default()
+            
+            # Check if we're running on Cloud Run (Compute Engine metadata server available)
+            if hasattr(credentials, 'service_account_email'):
+                # Create impersonated credentials for signing
+                service_account_email = f"stylize-mcp-sa@{self.project_id}.iam.gserviceaccount.com"
+                self.signing_credentials = ImpersonatedCredentials(
+                    source_credentials=credentials,
+                    target_principal=service_account_email,
+                    target_scopes=['https://www.googleapis.com/auth/cloud-platform']
+                )
+                logger.info(f"Using impersonated credentials for signing: {service_account_email}")
+            else:
+                # For local development, use default credentials
+                self.signing_credentials = credentials
+                logger.info("Using default credentials for signing")
+                
+        except Exception as e:
+            logger.warning(f"Could not set up signing credentials: {str(e)}. Signed URLs may not work.")
+            self.signing_credentials = None
 
     async def upload_image(self, bucket_name: str, destination_blob_name: str, 
                            image_bytes: bytes, content_type: str) -> None:
@@ -138,8 +176,12 @@ class GcsService:
             GcsSignedUrlError: If generating the signed URL fails
         """
         try:
-            # Get the bucket
-            bucket = self.client.bucket(bucket_name)
+            # Create a GCS client with signing credentials if available
+            if self.signing_credentials:
+                signing_client = storage.Client(credentials=self.signing_credentials)
+                bucket = signing_client.bucket(bucket_name)
+            else:
+                bucket = self.client.bucket(bucket_name)
             
             # Check if the bucket exists
             if not bucket.exists():
