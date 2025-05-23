@@ -72,7 +72,8 @@ class TestOpenAIService(unittest.TestCase):
         mock_secret_client.return_value = mock_secret_instance
         
         mock_response = MagicMock()
-        mock_response.payload.data.decode.return_value = 'secret_api_key'
+        # The actual implementation accesses response.payload.data as bytes
+        mock_response.payload.data = b'secret_api_key'
         mock_secret_instance.access_secret_version.return_value = mock_response
         
         service = OpenAIService()

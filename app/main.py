@@ -197,7 +197,7 @@ async def health_check():
     
     # Check style service status
     try:
-        styles_count = len(style_service.get_all_styles())
+        styles_count = len(get_style_service().get_all_styles())
         services["styles"] = f"ok ({styles_count} styles)"
     except Exception as e:
         services["styles"] = f"error: {str(e)}"
@@ -555,7 +555,7 @@ async def get_styles():
         JSON array of available styles
     """
     style_service = get_style_service()
-    return style_service.get_all_styles()
+    return get_style_service().get_all_styles()
 
 # The MCP endpoint is now handled by the router included above
 
