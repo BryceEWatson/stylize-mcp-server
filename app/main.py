@@ -65,22 +65,22 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize FastMCP first (before FastAPI)
-mcp_app = None
+# Initialize FastMCP first (before FastAPI) 
+mcp_instance = None
 try:
     from app.mcp_server import mcp
-    mcp_app = mcp.http_app(path="/")
-    logger.info("FastMCP app created successfully")
+    mcp_instance = mcp
+    logger.info("FastMCP instance imported successfully")
 except Exception as e:
-    log_startup_error(e, "mcp_app_creation")
-    logger.warning("Failed to create MCP app, continuing without lifespan integration")
+    log_startup_error(e, "mcp_import")
+    logger.warning("Failed to import MCP instance, continuing without lifespan integration")
 
 # Create FastAPI app with MCP lifespan integration
 app = FastAPI(
     title="Stylize MCP Server",
     description="API for stylizing images using generative AI",
     version="0.1.0",
-    lifespan=mcp_app.lifespan if mcp_app else None  # Critical fix
+    lifespan=mcp_instance.lifespan if mcp_instance else None  # Critical fix
 )
 
 # Service instances (initialized lazily via getters)
@@ -142,16 +142,17 @@ def get_gcs_service():
             raise
     return _gcs_service
 
-# Mount the MCP server (if successfully created above)
-if mcp_app:
+# Mount the MCP server (if successfully imported above)
+if mcp_instance:
     try:
+        mcp_app = mcp_instance.http_app(path="/")
         app.mount("/mcp", mcp_app)
         logger.info("Successfully mounted MCP server at /mcp")
     except Exception as e:
         log_startup_error(e, "mcp_server_mounting")
         logger.warning("Failed to mount MCP server, continuing without it")
 else:
-    logger.warning("MCP app not available for mounting")
+    logger.warning("MCP instance not available for mounting")
 
 # Add CORS middleware
 app.add_middleware(
@@ -193,7 +194,7 @@ async def health_check():
     
     # Check MCP service health
     try:
-        if mcp_app:
+        if mcp_instance:
             # Test if MCP endpoints are actually functional
             services["mcp"] = "ok"
         else:
