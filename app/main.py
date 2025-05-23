@@ -183,7 +183,9 @@ async def health_check():
     
     # Check MCP service health
     try:
-        if "mcp_router" in locals():
+        # Check if MCP is mounted by looking for it in the app's routes
+        mcp_mounted = any(route.path.startswith("/mcp") for route in app.routes)
+        if mcp_mounted:
             services["mcp"] = "ok"
         else:
             services["mcp"] = "unavailable"
