@@ -135,7 +135,7 @@ def get_gcs_service():
 try:
     from app.mcp_server import mcp
     # Mount the MCP server as a sub-application
-    mcp_app = mcp.http_app()
+    mcp_app = mcp.http_app(path="/")
     app.mount("/mcp", mcp_app)
     logger.info("Successfully mounted MCP server at /mcp")
 except Exception as e:
