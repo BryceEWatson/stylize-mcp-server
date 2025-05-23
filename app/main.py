@@ -56,8 +56,7 @@ def graceful_import():
         log_startup_error(e, "import")
         print(f"ERROR: Failed to import required module: {e}", file=sys.stderr)
 
-with graceful_import():
-    from app.mcp_server import get_mcp_router
+# MCP server will be imported directly when needed
 
 # Configure logging
 logging.basicConfig(
@@ -132,14 +131,16 @@ def get_gcs_service():
             raise
     return _gcs_service
 
-# Include the MCP router
+# Include the MCP server
 try:
-    mcp_router = get_mcp_router()
-    app.include_router(mcp_router, tags=["mcp"])
-    logger.info("Successfully included MCP router")
+    from app.mcp_server import mcp
+    # Mount the MCP server as a sub-application
+    mcp_app = mcp.http_app()
+    app.mount("/mcp", mcp_app)
+    logger.info("Successfully mounted MCP server at /mcp")
 except Exception as e:
-    log_startup_error(e, "mcp_router_inclusion")
-    logger.warning("Failed to include MCP router, continuing without it")
+    log_startup_error(e, "mcp_server_mounting")
+    logger.warning("Failed to mount MCP server, continuing without it")
     # Don't re-raise - allow app to start without MCP functionality
 
 # Add CORS middleware

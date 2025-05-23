@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "stylize-mcp": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-fetch",
+        "https://stylize-mcp-server-997481449751.us-central1.run.app/mcp"
+      ]
+    }
+  }
+}

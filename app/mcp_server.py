@@ -296,27 +296,5 @@ async def styles_catalog() -> str:
         logger.error(f"Error in styles_catalog resource: {str(e)}")
         return json.dumps({"error": str(e)})
 
-# Create a FastAPI router for the MCP server
-def get_mcp_router():
-    """Get a FastAPI router for the MCP server.
-    
-    Returns:
-        APIRouter: A FastAPI router that can be included in a FastAPI app
-    """
-    logger.info("Creating MCP router for FastAPI integration")
-    # Create a router from the MCP server
-    router = APIRouter()
-    
-    try:
-        # Add the MCP endpoint to the router
-        # This creates a Server-Sent Events (SSE) endpoint that clients can connect to
-        mcp.add_endpoint_to_router(router, path="/mcp")
-        logger.info("Successfully added MCP endpoint to router")
-    except Exception as e:
-        logger.error(f"Failed to add MCP endpoint to router: {str(e)}")
-        # Instead of failing completely, add a minimal health endpoint
-        @router.get("/mcp/health")
-        async def mcp_health():
-            return {"status": "degraded", "message": "MCP router initialized in fallback mode"}
-    
-    return router
+# Note: The MCP server is now mounted directly in main.py using mcp.http_app()
+# This provides the full MCP protocol endpoints at /mcp

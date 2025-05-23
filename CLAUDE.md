@@ -6,6 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Running the Application
 ```bash
+# Activate virtual environment first
+python -m venv venv
+source venv/bin/activate  # On Unix/macOS
+venv\Scripts\activate     # On Windows
+
 # Install dependencies
 pip install -r requirements.txt
 
@@ -84,3 +89,31 @@ The test suite covers all major components:
 - Unit tests for each service (OpenAI, GCS, context analysis, styles)
 - Integration tests for API endpoints
 - Mock-based testing for external service dependencies
+
+## Deployment Information
+
+### Cloud Run Deployment
+- **Service Name**: `stylize-mcp-server`
+- **Region**: `us-central1`
+- **Project**: `stylize-mcp-server` (GCP project ID: 997481449751)
+- **URL**: https://stylize-mcp-server-997481449751.us-central1.run.app
+- **Current Revision**: `stylize-mcp-server-00023-9rn`
+- **Image**: `us-central1-docker.pkg.dev/stylize-mcp-server/stylize-repo/stylize-mcp-server:b285416500d2a181a70a6360778ef9f3f0f2bd96`
+
+### Monitoring and Logs
+```bash
+# View Cloud Run logs
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=stylize-mcp-server AND resource.labels.location=us-central1" --limit=20 --format="table(timestamp,severity,textPayload)"
+
+# Get service details
+gcloud run services describe stylize-mcp-server --region=us-central1
+```
+
+### Known Issues
+- **GCS Signed URL Generation**: Service currently fails to generate signed URLs due to credential type mismatch
+  - Error: Service account needs private key credentials but is using Compute Engine credentials (token-only)
+  - Affects: `/stylize_image` endpoint returns 500 errors after successful image generation
+  - Impact: Images are generated and uploaded to GCS but signed download URLs cannot be created
+
+## Development Best Practices
+- Always activate the venv before installing libraries
