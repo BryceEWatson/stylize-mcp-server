@@ -75,12 +75,11 @@ except Exception as e:
     log_startup_error(e, "mcp_import")
     logger.warning("Failed to import MCP instance, continuing without lifespan integration")
 
-# Create FastAPI app with MCP lifespan integration
+# Create FastAPI app
 app = FastAPI(
     title="Stylize MCP Server",
     description="API for stylizing images using generative AI",
-    version="0.1.0",
-    lifespan=mcp_instance.lifespan if mcp_instance else None  # Critical fix
+    version="0.1.0"
 )
 
 # Service instances (initialized lazily via getters)
