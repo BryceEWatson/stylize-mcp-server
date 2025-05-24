@@ -1,0 +1,10 @@
+{
+  "stylize-mcp-server": {
+    "command": "node",
+    "args": [],
+    "transport": {
+      "type": "sse",
+      "url": "https://stylize-mcp-server-997481449751.us-central1.run.app/mcp/sse"
+    }
+  }
+}

@@ -109,11 +109,11 @@ gcloud logging read "resource.type=cloud_run_revision AND resource.labels.servic
 gcloud run services describe stylize-mcp-server --region=us-central1
 ```
 
-### Known Issues
-- **GCS Signed URL Generation**: Service currently fails to generate signed URLs due to credential type mismatch
-  - Error: Service account needs private key credentials but is using Compute Engine credentials (token-only)
-  - Affects: `/stylize_image` endpoint returns 500 errors after successful image generation
-  - Impact: Images are generated and uploaded to GCS but signed download URLs cannot be created
+### ✅ Recent Fixes (All Issues Resolved)
+- **GCS Signed URL Generation**: FIXED - Images now publicly accessible
+  - Solution: Added `allUsers` role with `storage.objectViewer` permission to GCS bucket
+  - Result: All generated images are accessible via public URLs
+  - Status: `/stylize_image` endpoint now returns working, accessible image URLs
 
 ## Development Best Practices
 - Always activate the venv before installing libraries
