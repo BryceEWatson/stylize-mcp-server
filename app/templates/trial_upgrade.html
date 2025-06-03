@@ -5,15 +5,86 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upgrade Your Trial - Stylize MCP</title>
     <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary-color: #8b5cf6;
+            --accent-color: #f59e0b;
+            --success-color: #10b981;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --background-light: #f9fafb;
+            --border-color: #e5e7eb;
+        }
+        
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
             min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .header-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 12px 20px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 8px;
+            margin-right: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            color: white;
+            font-size: 18px;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+        
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        
+        .nav-link:hover {
+            color: var(--primary-color);
+        }
+        
+        .main-content {
+            margin-top: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 80px);
         }
         .container {
             background: white;
@@ -23,17 +94,17 @@
             max-width: 500px;
             width: 100%;
         }
-        .header {
+        .page-header {
             text-align: center;
             margin-bottom: 30px;
         }
-        .header h1 {
-            color: #2d3748;
+        .page-header h1 {
+            color: var(--text-primary);
             font-size: 28px;
             margin-bottom: 8px;
         }
-        .header p {
-            color: #718096;
+        .page-header p {
+            color: var(--text-secondary);
             font-size: 16px;
         }
         .trial-status {
@@ -131,11 +202,24 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🎨 Upgrade Your Trial</h1>
-            <p>Create your account to get 100 free images per month!</p>
-        </div>
+    <header class="header-nav">
+        <a href="/web/upgrade" class="logo">
+            <div class="logo-icon">🎨</div>
+            <span>Stylize MCP</span>
+        </a>
+        <nav class="nav-links">
+            <a href="/health" class="nav-link">Status</a>
+            <a href="/docs" class="nav-link">API Docs</a>
+            <a href="/pricing/packages" class="nav-link">Pricing</a>
+        </nav>
+    </header>
+
+    <div class="main-content">
+        <div class="container">
+            <div class="page-header">
+                <h1>🚀 Upgrade Your Trial</h1>
+                <p>Create your account to get 100 free images per month!</p>
+            </div>
 
         {% if trial_info %}
         <div class="trial-status">
@@ -189,6 +273,7 @@
                 <li>Priority customer support</li>
                 <li>Option to purchase additional credits</li>
             </ul>
+        </div>
         </div>
     </div>
 </body>

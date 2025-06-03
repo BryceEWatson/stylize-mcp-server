@@ -5,15 +5,112 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Purchase Successful - Stylize MCP</title>
     <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary-color: #8b5cf6;
+            --accent-color: #f59e0b;
+            --success-color: #10b981;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --background-light: #f9fafb;
+            --border-color: #e5e7eb;
+        }
+        
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            background: linear-gradient(135deg, var(--success-color) 0%, #059669 100%);
             min-height: 100vh;
+            padding: 20px;
+            padding-top: 80px;
+        }
+        
+        .header-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 12px 20px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 8px;
+            margin-right: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            color: white;
+            font-size: 18px;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+        
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        
+        .nav-link:hover {
+            color: var(--primary-color);
+        }
+        
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .user-info {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .logout-btn {
+            background: var(--text-secondary);
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        
+        .logout-btn:hover {
+            background: var(--primary-color);
+        }
+        
+        .main-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 80px);
         }
         .container {
             background: white;
@@ -29,18 +126,18 @@
             margin-bottom: 20px;
         }
         .header h1 {
-            color: #2d3748;
+            color: var(--text-primary);
             font-size: 28px;
             margin-bottom: 12px;
         }
         .header p {
-            color: #718096;
+            color: var(--text-secondary);
             font-size: 16px;
             margin-bottom: 30px;
         }
         .credit-info {
             background: #f0fff4;
-            border: 2px solid #9ae6b4;
+            border: 2px solid var(--success-color);
             border-radius: 12px;
             padding: 24px;
             margin-bottom: 30px;
@@ -48,11 +145,11 @@
         .credit-info .new-balance {
             font-size: 32px;
             font-weight: bold;
-            color: #22543d;
+            color: var(--success-color);
             margin-bottom: 8px;
         }
         .credit-info .label {
-            color: #2f855a;
+            color: #065f46;
             font-size: 14px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -78,35 +175,56 @@
             transform: translateY(-1px);
         }
         .btn-primary {
-            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
             color: white;
         }
         .btn-secondary {
-            background: #edf2f7;
-            color: #4a5568;
-            border: 2px solid #e2e8f0;
+            background: var(--background-light);
+            color: var(--text-primary);
+            border: 2px solid var(--border-color);
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="success-icon">✅</div>
-        
-        <div class="header">
-            <h1>Purchase Successful!</h1>
-            <p>{{ message }}</p>
-        </div>
+    <header class="header-nav">
+        <a href="/web/dashboard" class="logo">
+            <div class="logo-icon">🎨</div>
+            <span>Stylize MCP</span>
+        </a>
+        <nav class="nav-links">
+            <a href="/health" class="nav-link">Status</a>
+            <a href="/docs" class="nav-link">API Docs</a>
+            <div class="user-menu">
+                {% if user %}
+                <span class="user-info">{{ user.first_name }}</span>
+                <a href="/web/logout" class="logout-btn">Logout</a>
+                {% else %}
+                <a href="/web/upgrade" class="nav-link">Sign Up</a>
+                {% endif %}
+            </div>
+        </nav>
+    </header>
 
-        {% if credits %}
-        <div class="credit-info">
-            <div class="new-balance">{{ credits.credits_balance }}</div>
-            <div class="label">Total Credits Available</div>
-        </div>
-        {% endif %}
+    <div class="main-content">
+        <div class="container">
+            <div class="success-icon">✅</div>
+            
+            <div class="header">
+                <h1>🎉 Purchase Successful!</h1>
+                <p>{{ message }}</p>
+            </div>
 
-        <div class="actions">
-            <a href="/web/dashboard" class="btn btn-primary">🎨 Back to Dashboard</a>
-            <a href="/stylize_image" class="btn btn-secondary">🖼️ Generate Images</a>
+            {% if credits %}
+            <div class="credit-info">
+                <div class="new-balance">{{ credits.credits_balance }}</div>
+                <div class="label">Total Credits Available</div>
+            </div>
+            {% endif %}
+
+            <div class="actions">
+                <a href="/web/dashboard" class="btn btn-primary">🎨 Back to Dashboard</a>
+                <a href="/docs" class="btn btn-secondary">🔧 API Documentation</a>
+            </div>
         </div>
     </div>
 </body>

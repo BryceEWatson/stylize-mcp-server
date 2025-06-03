@@ -5,12 +5,78 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Stylize MCP</title>
     <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary-color: #8b5cf6;
+            --accent-color: #f59e0b;
+            --success-color: #10b981;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --background-light: #f9fafb;
+            --border-color: #e5e7eb;
+        }
+        
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f7fafc;
+            background: var(--background-light);
             min-height: 100vh;
             padding: 20px;
+            padding-top: 80px;
+        }
+        
+        .header-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 20px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 8px;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+        
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        
+        .nav-link:hover {
+            color: var(--primary-color);
         }
         .container {
             max-width: 1200px;
@@ -23,13 +89,13 @@
             padding: 30px;
             margin-bottom: 30px;
         }
-        .header h1 {
-            color: #2d3748;
+        .page-header h1 {
+            color: var(--text-primary);
             font-size: 32px;
             margin-bottom: 8px;
         }
-        .header .welcome {
-            color: #718096;
+        .page-header .welcome {
+            color: var(--text-secondary);
             font-size: 18px;
         }
         .stats-grid {
@@ -171,26 +237,52 @@
             margin-bottom: 20px;
             border: 2px solid #fc8181;
         }
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .user-info {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
         .logout-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: #718096;
+            background: var(--text-secondary);
             color: white;
             padding: 8px 16px;
             border: none;
             border-radius: 6px;
             text-decoration: none;
             font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        
+        .logout-btn:hover {
+            background: var(--primary-color);
         }
     </style>
 </head>
 <body>
+    <header class="header-nav">
+        <a href="/web/dashboard" class="logo">
+            <div class="logo-icon">🎨</div>
+            <span>Stylize MCP</span>
+        </a>
+        <nav class="nav-links">
+            <a href="/health" class="nav-link">Status</a>
+            <a href="/docs" class="nav-link">API Docs</a>
+            <div class="user-menu">
+                <span class="user-info">{{ user.first_name }}</span>
+                <a href="/web/logout" class="logout-btn">Logout</a>
+            </div>
+        </nav>
+    </header>
+
     <div class="container">
-        <a href="/web/logout" class="logout-btn">Logout</a>
-        
-        <div class="header">
-            <h1>🎨 Your Dashboard</h1>
+        <div class="page-header">
+            <h1>📊 Your Dashboard</h1>
             <p class="welcome">Welcome back, {{ user.first_name }}!</p>
         </div>
 
