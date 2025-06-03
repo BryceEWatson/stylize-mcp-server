@@ -1235,7 +1235,20 @@ async def convert_trial_to_account(conversion: TrialToAccountRequest):
 
         # Get user profile for response
         user_service = get_user_service()
-        user_id = user_service.verify_token(access_token).get("sub")
+        token_payload = user_service.verify_token(access_token)
+        if not token_payload:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"error": "Failed to verify access token"}
+            )
+        
+        user_id = token_payload.get("sub")
+        if not user_id:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"error": "Invalid access token format"}
+            )
+            
         user_profile = await user_service.get_user_by_id(user_id)
 
         return AuthTokenResponse(
