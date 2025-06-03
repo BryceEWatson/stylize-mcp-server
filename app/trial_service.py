@@ -315,6 +315,9 @@ class TrialService:
             if not success:
                 return False, message, None
 
+            if not user_profile:
+                return False, "User registration succeeded but profile not returned", None
+
             # Mark trial session as converted
             if self.firestore_client:
                 trial_ref = self.firestore_client.collection('trial_sessions').document(conversion_request.session_id)
@@ -328,8 +331,11 @@ class TrialService:
                 data={"sub": user_profile.user_id}
             )
 
+            if not access_token:
+                return False, "Failed to create access token", None
+
             logger.info(f"Successfully converted trial {conversion_request.session_id} to user {user_profile.user_id}")
-            return True, "Account created successfully!", access_token
+            return True, "Account created successfully!", {"access_token": access_token, "user_profile": user_profile}
 
         except Exception as e:
             logger.error(f"Error converting trial to account: {str(e)}")

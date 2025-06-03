@@ -349,3 +349,68 @@ class UserService:
         except Exception as e:
             logger.error(f"Error creating API key for user {user_id}: {str(e)}")
             return False, f"Failed to create API key: {str(e)}", None
+
+    async def get_user_credits(self, user_id: str):
+        """Get user's credit balance."""
+        try:
+            if not self.firestore_client:
+                return None
+
+            credits_doc = self.firestore_client.collection('user_credits').document(user_id).get()
+            if not credits_doc.exists:
+                # Create default credit record
+                from app.models import UserCredits
+                default_credits = UserCredits(user_id=user_id)
+                self.firestore_client.collection('user_credits').document(user_id).set(default_credits.dict())
+                return default_credits
+
+            from app.models import UserCredits
+            return UserCredits(**credits_doc.to_dict())
+
+        except Exception as e:
+            logger.error(f"Error getting user credits for {user_id}: {str(e)}")
+            return None
+
+    async def purchase_credits(self, user_id: str, package_id: str) -> tuple[bool, str]:
+        """Purchase credits for a user (simplified - no actual payment processing)."""
+        try:
+            if not self.firestore_client:
+                return False, "Credit purchase not available (Firestore not configured)"
+
+            # Get trial service to access credit packages
+            from app.trial_service import TrialService
+            trial_service = TrialService()
+            package = trial_service.get_credit_package(package_id)
+            
+            if not package:
+                return False, f"Invalid package ID: {package_id}"
+
+            # Get current credits
+            user_credits = await self.get_user_credits(user_id)
+            if not user_credits:
+                return False, "Could not retrieve user credit information"
+
+            # Calculate new balances
+            total_new_credits = package.credits + package.bonus_credits
+            new_balance = user_credits.credits_balance + total_new_credits
+            new_total_purchased = user_credits.total_credits_purchased + total_new_credits
+
+            # Update credits using transaction
+            @firestore.transactional
+            def update_credits(transaction, credits_ref):
+                transaction.update(credits_ref, {
+                    'credits_balance': new_balance,
+                    'total_credits_purchased': new_total_purchased,
+                    'last_purchase_at': datetime.now(timezone.utc).isoformat()
+                })
+
+            credits_ref = self.firestore_client.collection('user_credits').document(user_id)
+            transaction = self.firestore_client.transaction()
+            update_credits(transaction, credits_ref)
+
+            logger.info(f"User {user_id} purchased {total_new_credits} credits (package: {package_id})")
+            return True, f"Successfully purchased {total_new_credits} credits! New balance: {new_balance}"
+
+        except Exception as e:
+            logger.error(f"Error purchasing credits for user {user_id}: {str(e)}")
+            return False, f"Credit purchase failed: {str(e)}"

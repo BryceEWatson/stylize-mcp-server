@@ -1225,7 +1225,7 @@ async def convert_trial_to_account(conversion: TrialToAccountRequest):
     try:
         trial_service = get_trial_service()
 
-        success, message, access_token = await trial_service.convert_trial_to_account(conversion)
+        success, message, result = await trial_service.convert_trial_to_account(conversion)
 
         if not success:
             return JSONResponse(
@@ -1233,25 +1233,10 @@ async def convert_trial_to_account(conversion: TrialToAccountRequest):
                 content={"error": message}
             )
 
-        # The trial service conversion should return user info, but let's get it safely
+        # Extract access token and user profile from result
+        access_token = result["access_token"]
+        user_profile = result["user_profile"]
         user_service = get_user_service()
-        
-        # Extract user ID from the access token we just created
-        token_payload = user_service.verify_token(access_token)
-        if token_payload and token_payload.get("sub"):
-            user_profile = await user_service.get_user_by_id(token_payload.get("sub"))
-        else:
-            # Fallback - this shouldn't happen but handle it gracefully
-            logger.warning("Could not verify newly created access token - returning minimal response")
-            return JSONResponse(
-                status_code=status.HTTP_200_OK,
-                content={
-                    "access_token": access_token,
-                    "token_type": "bearer",
-                    "expires_in": user_service.access_token_expire_minutes * 60,
-                    "message": "Account created successfully"
-                }
-            )
 
         return AuthTokenResponse(
             access_token=access_token,
@@ -1289,6 +1274,129 @@ async def get_credit_packages():
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"error": "Failed to get pricing packages"}
+        )
+
+# Credit management endpoints
+@app.get("/user/credits")
+async def get_user_credits(auth=Depends(require_styles_permission)):
+    """Get current user's credit balance.
+    
+    Returns:
+        User credit balance and usage information
+    """
+    try:
+        if not auth or auth.get("type") != "user":
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"error": "This endpoint requires user authentication"}
+            )
+
+        user_service = get_user_service()
+        user_credits = await user_service.get_user_credits(auth["user"].user_id)
+        
+        if not user_credits:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"error": "Could not retrieve credit information"}
+            )
+
+        return user_credits.model_dump()
+
+    except Exception as e:
+        logger.error(f"Error getting user credits: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"error": "Failed to get credit information"}
+        )
+
+@app.post("/user/purchase-credits")
+async def purchase_credits(
+    purchase_request: CreditPurchaseRequest,
+    auth=Depends(require_styles_permission)
+):
+    """Purchase credits for the authenticated user.
+    
+    Args:
+        purchase_request: Credit package to purchase
+        
+    Returns:
+        Purchase confirmation and new credit balance
+    """
+    try:
+        if not auth or auth.get("type") != "user":
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"error": "This endpoint requires user authentication"}
+            )
+
+        user_service = get_user_service()
+        success, message = await user_service.purchase_credits(
+            auth["user"].user_id, 
+            purchase_request.package_id
+        )
+        
+        if not success:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"error": message}
+            )
+
+        # Get updated credit balance
+        user_credits = await user_service.get_user_credits(auth["user"].user_id)
+        
+        return {
+            "success": True,
+            "message": message,
+            "credits": user_credits.model_dump() if user_credits else None
+        }
+
+    except Exception as e:
+        logger.error(f"Error purchasing credits: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"error": "Credit purchase failed"}
+        )
+
+@app.get("/user/dashboard")
+async def get_user_dashboard(auth=Depends(require_styles_permission)):
+    """Get user dashboard with credits, usage, and upgrade options.
+    
+    Returns:
+        Complete dashboard information for the user
+    """
+    try:
+        if not auth or auth.get("type") != "user":
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"error": "This endpoint requires user authentication"}
+            )
+
+        user_service = get_user_service()
+        trial_service = get_trial_service()
+        
+        # Get user credits and usage
+        user_credits = await user_service.get_user_credits(auth["user"].user_id)
+        user_usage = await user_service.get_user_usage_stats(auth["user"].user_id)
+        
+        # Get subscription limits
+        limits = user_service.get_subscription_limits(auth["user"].subscription_tier)
+        
+        # Get available credit packages
+        credit_packages = trial_service.get_credit_packages()
+        
+        return {
+            "user": auth["user"].model_dump(),
+            "credits": user_credits.model_dump() if user_credits else None,
+            "usage": user_usage.model_dump() if user_usage else None,
+            "subscription_limits": limits.model_dump(),
+            "available_packages": [pkg.model_dump() for pkg in credit_packages]
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting user dashboard: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"error": "Failed to get dashboard information"}
         )
 
 # The MCP endpoint is now handled by the router included above
