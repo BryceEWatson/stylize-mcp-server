@@ -28,6 +28,7 @@ from app.models import (
     AuthTokenResponse,
     CreateAPIKeyRequest,
     CreateAPIKeyResponse,
+    CreditPurchaseRequest,
     ProjectContext,
     SubscriptionTier,
     TrialToAccountRequest,
