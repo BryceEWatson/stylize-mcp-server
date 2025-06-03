@@ -1,9 +1,9 @@
 """Tests for the styles_service module."""
 
 import json
-import os
+from unittest.mock import mock_open, patch
+
 import pytest
-from unittest.mock import patch, mock_open, MagicMock
 
 from app.styles_service import StyleService
 
@@ -30,7 +30,7 @@ def test_load_styles_success():
     mock_data = json.dumps(TEST_STYLES)
     with patch("builtins.open", mock_open(read_data=mock_data)):
         service = StyleService("mock_path")
-        
+
         assert len(service.styles) == 2
         assert service.styles[0]["id"] == "test_style_1"
         assert service.styles[1]["id"] == "test_style_2"
@@ -57,7 +57,7 @@ def test_get_all_styles():
     with patch.object(StyleService, "_load_styles"):
         service = StyleService()
         service.styles = TEST_STYLES
-        
+
         styles = service.get_all_styles()
         assert styles == TEST_STYLES
 
@@ -67,7 +67,7 @@ def test_is_valid_style_id():
     with patch.object(StyleService, "_load_styles"):
         service = StyleService()
         service.styles_by_id = {"valid_id": {}, "another_valid_id": {}}
-        
+
         assert service.is_valid_style_id("valid_id") is True
         assert service.is_valid_style_id("another_valid_id") is True
         assert service.is_valid_style_id("invalid_id") is False
@@ -80,7 +80,7 @@ def test_get_available_style_ids():
     with patch.object(StyleService, "_load_styles"):
         service = StyleService()
         service.styles_by_id = {"style1": {}, "style2": {}, "style3": {}}
-        
+
         style_ids = service.get_available_style_ids()
         assert set(style_ids) == {"style1", "style2", "style3"}
         assert len(style_ids) == 3

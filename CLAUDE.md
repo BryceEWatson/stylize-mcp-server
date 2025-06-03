@@ -209,8 +209,17 @@ pytest --cov=app
 # Run specific test file
 pytest tests/test_main.py
 
-# Run tests with verbose output
+# Run tests with verbose output (default from pytest.ini)
 pytest -v
+
+# Run tests and show output
+pytest -s
+
+# Run specific test by name
+pytest tests/test_main.py::test_health_endpoint
+
+# Run tests in parallel (if pytest-xdist installed)
+pytest -n auto
 ```
 
 ### Docker
@@ -306,5 +315,26 @@ gcloud run services describe stylize-mcp-server --region=us-central1
 - `mcp`: Access to all MCP tools and resources
 - `admin`: Full access to all endpoints and operations
 
+### Linting and Code Quality
+```bash
+# Install development dependencies
+pip install ruff black isort
+
+# Format code with black
+black app/ tests/
+
+# Sort imports with isort
+isort app/ tests/
+
+# Lint with ruff (fast Python linter)
+ruff check app/ tests/
+
+# Auto-fix linting issues
+ruff check --fix app/ tests/
+```
+
 ## Development Best Practices
 - Always activate the venv before installing libraries
+- Run tests before committing: `pytest`
+- Format code before committing: `black app/ tests/`
+- Fix linting issues: `ruff check --fix app/ tests/`

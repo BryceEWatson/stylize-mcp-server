@@ -3,13 +3,12 @@
 import json
 import logging
 import os
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 class StyleService:
     """Service for managing the style catalog."""
-    
+
     def __init__(self, styles_file_path: str = None):
         """Initialize the StyleService.
         
@@ -20,7 +19,7 @@ class StyleService:
         self.styles = []
         self.styles_by_id = {}
         self._load_styles()
-    
+
     def _load_styles(self) -> None:
         """Load styles from the styles.json file.
         
@@ -29,13 +28,13 @@ class StyleService:
             json.JSONDecodeError: If the styles file contains invalid JSON.
         """
         try:
-            with open(self.styles_file_path, 'r') as f:
+            with open(self.styles_file_path) as f:
                 self.styles = json.load(f)
-                
+
             # Build a lookup dictionary for styles by ID for efficient validation
             self.styles_by_id = {style['id']: style for style in self.styles}
             logger.info(f"Loaded {len(self.styles)} styles from {self.styles_file_path}")
-            
+
         except FileNotFoundError:
             logger.error(f"Styles file not found: {self.styles_file_path}")
             # Re-raise to indicate a critical startup issue
@@ -44,15 +43,15 @@ class StyleService:
             logger.error(f"Invalid JSON in styles file: {e}")
             # Re-raise to indicate a critical startup issue
             raise
-    
-    def get_all_styles(self) -> List[Dict]:
+
+    def get_all_styles(self) -> list[dict]:
         """Get all available styles.
         
         Returns:
             List of style objects.
         """
         return self.styles
-    
+
     def is_valid_style_id(self, style_id: str) -> bool:
         """Check if a style ID exists in the catalog.
         
@@ -63,16 +62,16 @@ class StyleService:
             True if the style ID exists, False otherwise.
         """
         return style_id in self.styles_by_id
-    
-    def get_available_style_ids(self) -> List[str]:
+
+    def get_available_style_ids(self) -> list[str]:
         """Get a list of all available style IDs.
         
         Returns:
             List of style IDs.
         """
         return list(self.styles_by_id.keys())
-        
-    def get_style_by_id(self, style_id: str) -> Optional[Dict]:
+
+    def get_style_by_id(self, style_id: str) -> dict | None:
         """Get a style by its ID.
         
         Args:

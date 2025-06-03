@@ -1,28 +1,22 @@
 """Unit tests for the OpenAI service."""
 
-import unittest
-from unittest.mock import patch, MagicMock, mock_open, call
-import os
-import base64
 import io
-import pytest
+import unittest
+from unittest.mock import MagicMock, patch
+
 import requests
 
 # Updated imports for OpenAI SDK v1.79.0+
-from openai import APIError, APIConnectionError, RateLimitError, BadRequestError, Image
+from openai import BadRequestError
 from openai.types.chat import ChatCompletion
-from openai.types.chat.chat_completion import Choice as ChatCompletionChoice
-from openai.types.chat.chat_completion_message import ChatCompletionMessage
-from typing import Any, Dict, List, Union, Optional
-import openai
 
 from app.openai_service import (
+    OpenAIAPIConnectionError,
+    OpenAIContentPolicyViolationError,
+    OpenAIInvalidRequestError,
+    OpenAIRateLimitError,
     OpenAIService,
     OpenAIServiceError,
-    OpenAIAPIConnectionError,
-    OpenAIRateLimitError,
-    OpenAIContentPolicyViolationError,
-    OpenAIInvalidRequestError
 )
 
 
@@ -36,12 +30,12 @@ class TestOpenAIService(unittest.TestCase):
             'OPENAI_API_KEY': 'test_api_key'
         })
         self.env_patcher.start()
-        
+
         # Create a mock for the OpenAI client
         self.mock_openai_client = MagicMock()
         self.client_patcher = patch('app.openai_service.OpenAI', return_value=self.mock_openai_client)
         self.mock_openai = self.client_patcher.start()
-        
+
         # Set up mock objects for OpenAI exceptions
         self.mock_request = MagicMock()
         self.mock_request.method = "POST"
@@ -55,10 +49,10 @@ class TestOpenAIService(unittest.TestCase):
     def test_initialization_with_env_var(self):
         """Test initialization with API key from environment variable."""
         service = OpenAIService()
-        
+
         # Verify that the OpenAI client was initialized with the correct API key
         self.mock_openai.assert_called_once_with(api_key='test_api_key')
-        
+
         # Verify that the models are correctly set
         self.assertEqual(service.dalle_model, 'dall-e-3')
         self.assertEqual(service.vision_model, 'gpt-4o')
@@ -70,19 +64,19 @@ class TestOpenAIService(unittest.TestCase):
         # Mock the secret manager client's access_secret_version method
         mock_secret_instance = MagicMock()
         mock_secret_client.return_value = mock_secret_instance
-        
+
         mock_response = MagicMock()
         # The actual implementation accesses response.payload.data as bytes
         mock_response.payload.data = b'secret_api_key'
         mock_secret_instance.access_secret_version.return_value = mock_response
-        
+
         service = OpenAIService()
-        
+
         # Verify that the secret manager client was called correctly
         mock_secret_instance.access_secret_version.assert_called_once_with(
             name='projects/my-project/secrets/openai-api-key/versions/latest'
         )
-        
+
         # Verify that the OpenAI client was initialized with the correct API key
         self.mock_openai.assert_called_once_with(api_key='secret_api_key')
 
@@ -98,23 +92,23 @@ class TestOpenAIService(unittest.TestCase):
         mock_image_data = MagicMock()
         mock_image_data.url = 'https://example.com/generated-image.png'
         mock_image_data.b64_json = None
-        
+
         mock_response = MagicMock()
         mock_response.data = [mock_image_data]
-        
+
         self.mock_openai_client.images.generate.return_value = mock_response
-        
+
         # Mock the HTTP response for fetching the image
         mock_image_content = b'fake-image-data'
         mock_http_response = MagicMock()
         mock_http_response.content = mock_image_content
-        
+
         with patch('app.openai_service.requests.get') as mock_get:
             mock_get.return_value = mock_http_response
-            
+
             service = OpenAIService()
             result = service.generate_image_from_prompt('test prompt')
-            
+
             # Verify that the OpenAI API was called with the correct parameters
             self.mock_openai_client.images.generate.assert_called_once_with(
                 model='dall-e-3',
@@ -123,10 +117,10 @@ class TestOpenAIService(unittest.TestCase):
                 quality='standard',
                 n=1
             )
-            
+
             # Verify that requests.get was called with the correct URL
             mock_get.assert_called_once_with('https://example.com/generated-image.png', timeout=30)
-            
+
             # Verify the result
             self.assertEqual(result, mock_image_content)
 
@@ -136,15 +130,15 @@ class TestOpenAIService(unittest.TestCase):
         mock_image_data = MagicMock()
         mock_image_data.url = None
         mock_image_data.b64_json = 'ZmFrZS1pbWFnZS1kYXRhLWJhc2U2NC1lbmNvZGVk'  # base64 encoded string
-        
+
         mock_response = MagicMock()
         mock_response.data = [mock_image_data]
-        
+
         self.mock_openai_client.images.generate.return_value = mock_response
-        
+
         service = OpenAIService()
         result = service.generate_image_from_prompt('test prompt')
-        
+
         # Verify that the OpenAI API was called with the correct parameters
         self.mock_openai_client.images.generate.assert_called_once_with(
             model='dall-e-3',
@@ -153,7 +147,7 @@ class TestOpenAIService(unittest.TestCase):
             quality='standard',
             n=1
         )
-        
+
         # Verify the result is the decoded base64 data
         # We're not verifying the content because it's just a mock, but verifying it's bytes
         self.assertIsInstance(result, bytes)
@@ -164,40 +158,40 @@ class TestOpenAIService(unittest.TestCase):
         mock_image_data = MagicMock()
         mock_image_data.url = 'https://example.com/generated-variation.png'
         mock_image_data.b64_json = None
-        
+
         mock_response = MagicMock()
         mock_response.data = [mock_image_data]
-        
+
         self.mock_openai_client.images.create_variation.return_value = mock_response
-        
+
         # Mock the HTTP response for fetching the image
         mock_image_content = b'fake-variation-image-data'
         mock_http_response = MagicMock()
         mock_http_response.content = mock_image_content
-        
+
         with patch('app.openai_service.requests.get') as mock_get:
             mock_get.return_value = mock_http_response
-            
+
             service = OpenAIService()
             reference_image_bytes = b'reference-image-data'
             result = service.generate_image_variation('test variation prompt', reference_image_bytes)
-            
+
             # Verify that the OpenAI API was called with the correct parameters
             self.mock_openai_client.images.create_variation.assert_called_once()
-            
+
             # Get the arguments that were passed to the create_variation method
             call_args = self.mock_openai_client.images.create_variation.call_args[1]
             # Check for prompt parameter - our implementation first tries with prompt
             self.assertEqual(call_args['prompt'], 'test variation prompt')
             self.assertEqual(call_args['size'], '1024x1024')
             self.assertEqual(call_args['n'], 1)
-            
+
             # The image parameter should be a BytesIO object with our reference image
             self.assertIsInstance(call_args['image'], io.BytesIO)
-            
+
             # Verify that requests.get was called with the correct URL
             mock_get.assert_called_once_with('https://example.com/generated-variation.png', timeout=30)
-            
+
             # Verify the result
             self.assertEqual(result, mock_image_content)
 
@@ -206,9 +200,9 @@ class TestOpenAIService(unittest.TestCase):
         # Patch the service method to directly raise the custom exception
         with patch.object(OpenAIService, 'generate_image_from_prompt', autospec=True) as mock_method:
             mock_method.side_effect = OpenAIAPIConnectionError("Connection error with OpenAI API")
-            
+
             service = OpenAIService()
-            
+
             with self.assertRaises(OpenAIAPIConnectionError):
                 service.generate_image_from_prompt('test prompt')
 
@@ -217,9 +211,9 @@ class TestOpenAIService(unittest.TestCase):
         # Patch the service method to directly raise the custom exception
         with patch.object(OpenAIService, 'generate_image_from_prompt', autospec=True) as mock_method:
             mock_method.side_effect = OpenAIRateLimitError("Rate limit exceeded")
-            
+
             service = OpenAIService()
-            
+
             with self.assertRaises(OpenAIRateLimitError):
                 service.generate_image_from_prompt('test prompt')
 
@@ -228,9 +222,9 @@ class TestOpenAIService(unittest.TestCase):
         # Patch the service method to directly raise the custom exception
         with patch.object(OpenAIService, 'generate_image_from_prompt', autospec=True) as mock_method:
             mock_method.side_effect = OpenAIContentPolicyViolationError("Content policy violation")
-            
+
             service = OpenAIService()
-            
+
             with self.assertRaises(OpenAIContentPolicyViolationError):
                 service.generate_image_from_prompt('test prompt')
 
@@ -239,9 +233,9 @@ class TestOpenAIService(unittest.TestCase):
         # Patch the service method to directly raise the custom exception
         with patch.object(OpenAIService, 'generate_image_from_prompt', autospec=True) as mock_method:
             mock_method.side_effect = OpenAIInvalidRequestError("Invalid request parameters")
-            
+
             service = OpenAIService()
-            
+
             with self.assertRaises(OpenAIInvalidRequestError):
                 service.generate_image_from_prompt('test prompt')
 
@@ -250,9 +244,9 @@ class TestOpenAIService(unittest.TestCase):
         # Patch the service method to directly raise the custom exception
         with patch.object(OpenAIService, 'generate_image_from_prompt', autospec=True) as mock_method:
             mock_method.side_effect = OpenAIServiceError("OpenAI API error")
-            
+
             service = OpenAIService()
-            
+
             with self.assertRaises(OpenAIServiceError):
                 service.generate_image_from_prompt('test prompt')
 
@@ -261,10 +255,10 @@ class TestOpenAIService(unittest.TestCase):
         # Patch the service method to directly raise the custom exception
         with patch.object(OpenAIService, 'generate_image_variation', autospec=True) as mock_method:
             mock_method.side_effect = OpenAIAPIConnectionError("Connection error with OpenAI API")
-            
+
             service = OpenAIService()
             reference_image_bytes = b'reference-image-data'
-            
+
             with self.assertRaises(OpenAIAPIConnectionError):
                 service.generate_image_variation('test prompt', reference_image_bytes)
 
@@ -273,11 +267,11 @@ class TestOpenAIService(unittest.TestCase):
         # Mock an empty response
         mock_response = MagicMock()
         mock_response.data = []
-        
+
         self.mock_openai_client.images.generate.return_value = mock_response
-        
+
         service = OpenAIService()
-        
+
         with self.assertRaises(OpenAIServiceError):
             service.generate_image_from_prompt('test prompt')
 
@@ -287,18 +281,18 @@ class TestOpenAIService(unittest.TestCase):
         mock_image_data = MagicMock()
         mock_image_data.url = 'https://example.com/image.png'
         mock_image_data.b64_json = None
-        
+
         mock_response = MagicMock()
         mock_response.data = [mock_image_data]
-        
+
         self.mock_openai_client.images.generate.return_value = mock_response
-        
+
         # Mock an HTTP error when fetching the image
         with patch('app.openai_service.requests.get') as mock_get:
             mock_get.side_effect = requests.RequestException('Failed to fetch image')
-            
+
             service = OpenAIService()
-            
+
             with self.assertRaises(OpenAIServiceError):
                 service.generate_image_from_prompt('test prompt')
 
@@ -318,50 +312,50 @@ class TestOpenAIService(unittest.TestCase):
                 raise BadRequestError(error_message, response=mock_err_response, body=mock_body)
             else:
                 return mock_response
-        
+
         # Create a successful response for the second call
         mock_image_data = MagicMock()
         mock_image_data.url = 'https://example.com/retry-variation.png'
         mock_image_data.b64_json = None
-        
+
         mock_response = MagicMock()
         mock_response.data = [mock_image_data]
-        
+
         # Set the side effect function
         self.mock_openai_client.images.create_variation.side_effect = side_effect
-        
+
         # Mock the HTTP response for fetching the image
         mock_image_content = b'retry-variation-image-data'
         mock_http_response = MagicMock()
         mock_http_response.content = mock_image_content
-        
+
         with patch('app.openai_service.requests.get') as mock_get:
             mock_get.return_value = mock_http_response
-            
+
             service = OpenAIService()
             reference_image_bytes = b'reference-image-data'
             result = service.generate_image_variation('test prompt', reference_image_bytes)
-            
+
             # Verify the API was called twice
             self.assertEqual(self.mock_openai_client.images.create_variation.call_count, 2)
-            
+
             # Get the arguments for both calls
             first_call_args = self.mock_openai_client.images.create_variation.call_args_list[0][1]
             second_call_args = self.mock_openai_client.images.create_variation.call_args_list[1][1]
-            
+
             # Verify first call had prompt parameter
             self.assertIn('prompt', first_call_args)
             self.assertEqual(first_call_args['prompt'], 'test prompt')
-            
+
             # Verify second call didn't have prompt parameter
             self.assertNotIn('prompt', second_call_args)
-            
+
             # Both calls should have the same size and n parameters
             self.assertEqual(first_call_args['size'], '1024x1024')
             self.assertEqual(second_call_args['size'], '1024x1024')
             self.assertEqual(first_call_args['n'], 1)
             self.assertEqual(second_call_args['n'], 1)
-            
+
             # Verify the result was correctly returned
             self.assertEqual(result, mock_image_content)
 
@@ -371,77 +365,77 @@ class TestOpenAIService(unittest.TestCase):
         reference_image_bytes = b'test-reference-image-data'
         prompt = "Create a logo in watercolor style"
         enhanced_prompt = "A refreshed version of the logo with elegant watercolor style, featuring subtle blue tones and artistic brushstrokes"
-        
+
         # Step 1: Mock the GPT-4V analysis response
         mock_chat_message = MagicMock()
         mock_chat_message.role = "assistant"
         mock_chat_message.content = enhanced_prompt
-        
+
         mock_choice = MagicMock()
         mock_choice.message = mock_chat_message
         mock_choice.finish_reason = "stop"
         mock_choice.index = 0
-        
+
         mock_chat_completion = MagicMock()
         mock_chat_completion.id = "chatcmpl-123"
         mock_chat_completion.choices = [mock_choice]
         mock_chat_completion.created = 1677858242
         mock_chat_completion.model = "gpt-4o"
-        
+
         # Step 2: Mock the DALL-E 3 image generation response
         mock_image_data = MagicMock()
         mock_image_data.url = 'https://example.com/generated-image.png'
         mock_image_data.b64_json = None
-        
+
         mock_image_response = MagicMock()
         mock_image_response.data = [mock_image_data]
-        
+
         # Set up the side effects for the API calls
         self.mock_openai_client.chat.completions.create.return_value = mock_chat_completion
         self.mock_openai_client.images.generate.return_value = mock_image_response
-        
+
         # Mock the HTTP response for fetching the image
         mock_image_content = b'fake-image-data'
         mock_http_response = MagicMock()
         mock_http_response.content = mock_image_content
-        
+
         with patch('app.openai_service.requests.get') as mock_get:
             mock_get.return_value = mock_http_response
-            
+
             # Execute the method under test
             service = OpenAIService()
             result = service.generate_image_from_prompt_and_reference(prompt, reference_image_bytes)
-            
+
             # Verify GPT-4V was called correctly
             self.mock_openai_client.chat.completions.create.assert_called_once()
-            
+
             # Verify DALL-E 3 was called with the enhanced prompt
             self.mock_openai_client.images.generate.assert_called_once()
             generate_call_args = self.mock_openai_client.images.generate.call_args[1]
             self.assertEqual(generate_call_args['prompt'], enhanced_prompt)
-            
+
             # Verify the result
             self.assertEqual(result, mock_image_content)
 
     def test_get_image_mime_type(self):
         """Test the MIME type detection from image bytes."""
         service = OpenAIService()
-        
+
         # Test JPEG detection
         jpeg_header = b'\xFF\xD8\xFF' + b'\x00' * 10
         self.assertEqual(service._get_image_mime_type(jpeg_header), 'image/jpeg')
-        
+
         # Test PNG detection
         png_header = b'\x89PNG\r\n\x1a\n' + b'\x00' * 10
         self.assertEqual(service._get_image_mime_type(png_header), 'image/png')
-        
+
         # Test GIF detection
         gif87a_header = b'GIF87a' + b'\x00' * 10
         self.assertEqual(service._get_image_mime_type(gif87a_header), 'image/gif')
-        
+
         gif89a_header = b'GIF89a' + b'\x00' * 10
         self.assertEqual(service._get_image_mime_type(gif89a_header), 'image/gif')
-        
+
         # Test fallback for unknown format
         unknown_header = b'\x00\x01\x02\x03'
         self.assertEqual(service._get_image_mime_type(unknown_header), 'image/png')
@@ -451,54 +445,54 @@ class TestOpenAIService(unittest.TestCase):
         reference_image_bytes = b'test-reference-image-data'
         prompt = "Create a logo in watercolor style"
         enhanced_prompt = "A refreshed version of the logo with elegant watercolor style, featuring subtle blue tones and artistic brushstrokes"
-            
+
         # Set up mock for the GPT-4V chat completions
         mock_chat_message = MagicMock()
         mock_chat_message.role = "assistant"
         mock_chat_message.content = enhanced_prompt
-            
+
         # Create a mock choice
         mock_choice = MagicMock()
         mock_choice.message = mock_chat_message
         mock_choice.finish_reason = "stop"
         mock_choice.index = 0
-            
+
         # Create a mock completion
         mock_chat_completion = MagicMock()
         mock_chat_completion.id = "chatcmpl-123"
         mock_chat_completion.choices = [mock_choice]
         mock_chat_completion.created = 1677858242
         mock_chat_completion.model = "gpt-4o"
-            
+
         self.mock_openai_client.chat.completions.create.return_value = mock_chat_completion
-            
+
         service = OpenAIService()
         result = service._analyze_reference_image_with_gpt4v(prompt, reference_image_bytes)
-            
+
         # Verify GPT-4V was called correctly
         self.mock_openai_client.chat.completions.create.assert_called_once()
         call_args = self.mock_openai_client.chat.completions.create.call_args[1]
         self.assertEqual(call_args['model'], 'gpt-4o')
         self.assertEqual(len(call_args['messages']), 2)
-            
+
         # Verify correct system and user messages
         self.assertEqual(call_args['messages'][0]['role'], 'system')
         self.assertEqual(call_args['messages'][1]['role'], 'user')
-            
+
         # Verify user message contains both text content and image URL
         user_content = call_args['messages'][1]['content']
         self.assertEqual(len(user_content), 2)
         self.assertEqual(user_content[0]['type'], 'text')
         self.assertEqual(user_content[1]['type'], 'image_url')
-            
+
         # Verify the enhanced prompt was correctly returned
         self.assertEqual(result, enhanced_prompt)
-        
+
     def test_analyze_reference_image_with_gpt4v_empty_response(self):
         """Test handling of empty responses from GPT-4V analysis."""
         reference_image_bytes = b'test-reference-image-data'
         prompt = "Create a logo in watercolor style"
-            
+
         # Set up mock for an empty GPT-4V response
         mock_chat_completion = MagicMock(spec=ChatCompletion)
         mock_chat_completion.id = "chatcmpl-123"
@@ -506,30 +500,30 @@ class TestOpenAIService(unittest.TestCase):
         mock_chat_completion.created = 1677858242
         mock_chat_completion.model = "gpt-4o"
         self.mock_openai_client.chat.completions.create.return_value = mock_chat_completion
-            
+
         service = OpenAIService()
         with self.assertRaises(OpenAIServiceError):
             service._analyze_reference_image_with_gpt4v(prompt, reference_image_bytes)
-    
+
     def test_analyze_reference_image_api_errors(self):
         """Test handling of API errors during GPT-4V analysis."""
         reference_image_bytes = b'test-reference-image-data'
         prompt = "Create a logo in watercolor style"
-        
+
         # Test API connection error
         with patch.object(OpenAIService, '_analyze_reference_image_with_gpt4v', autospec=True) as mock_method:
             mock_method.side_effect = OpenAIAPIConnectionError("Connection refused")
             service = OpenAIService()
             with self.assertRaises(OpenAIAPIConnectionError):
                 service._analyze_reference_image_with_gpt4v(prompt, reference_image_bytes)
-        
+
         # Test rate limit error
         with patch.object(OpenAIService, '_analyze_reference_image_with_gpt4v', autospec=True) as mock_method:
             mock_method.side_effect = OpenAIRateLimitError("Rate limit exceeded")
             service = OpenAIService()
             with self.assertRaises(OpenAIRateLimitError):
                 service._analyze_reference_image_with_gpt4v(prompt, reference_image_bytes)
-        
+
         # Test content policy violation
         with patch.object(OpenAIService, '_analyze_reference_image_with_gpt4v', autospec=True) as mock_method:
             mock_method.side_effect = OpenAIContentPolicyViolationError("Request rejected due to content policy violation")

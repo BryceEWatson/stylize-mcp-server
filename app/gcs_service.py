@@ -2,13 +2,12 @@
 
 import logging
 import os
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import timedelta
 
-from google.cloud import storage
-from google.cloud.exceptions import GoogleCloudError
 from google.auth import default
 from google.auth.impersonated_credentials import Credentials as ImpersonatedCredentials
+from google.cloud import storage
+from google.cloud.exceptions import GoogleCloudError
 
 logger = logging.getLogger(__name__)
 
@@ -52,27 +51,27 @@ class GcsService:
         try:
             # Initialize the GCS client
             self.client = storage.Client()
-            
+
             # Get the project ID - used for constructing default bucket names
             self.project_id = os.environ.get('GCP_PROJECT_ID', self.client.project)
-            
+
             # Set up credentials for signed URL generation
             # On Cloud Run, we need to use impersonated credentials for signing
             self._setup_signing_credentials()
-            
+
             # Determine bucket names from environment variables or construct them
             self.originals_bucket_name = os.environ.get(
-                'ORIGINALS_BUCKET_NAME', 
+                'ORIGINALS_BUCKET_NAME',
                 f"stylize-originals-{self.project_id}"
             )
-            
+
             self.variants_bucket_name = os.environ.get(
-                'VARIANTS_BUCKET_NAME', 
+                'VARIANTS_BUCKET_NAME',
                 f"stylize-variants-{self.project_id}"
             )
-            
+
             logger.info(f"GCS Service initialized with buckets: {self.originals_bucket_name}, {self.variants_bucket_name}")
-            
+
         except Exception as e:
             error_msg = f"Failed to initialize GCS service: {str(e)}"
             logger.error(error_msg)
@@ -87,10 +86,10 @@ class GcsService:
         try:
             # Get default credentials
             credentials, _ = default()
-            
+
             # Check the type of credentials we have
             logger.info(f"Detected credential type: {type(credentials)}")
-            
+
             # For Cloud Run with service account, we can use the credentials directly
             # The service account should have the necessary permissions for signed URLs
             if hasattr(credentials, 'service_account_email'):
@@ -109,7 +108,7 @@ class GcsService:
                     if response.status_code == 200:
                         service_account_email = response.text
                         logger.info(f"Detected Cloud Run/Compute Engine service account: {service_account_email}")
-                        
+
                         # On Cloud Run, we need to create impersonated credentials for signing
                         self.signing_credentials = ImpersonatedCredentials(
                             source_credentials=credentials,
@@ -125,12 +124,12 @@ class GcsService:
                     # Not running on Compute Engine/Cloud Run, use default credentials
                     self.signing_credentials = credentials
                     logger.info("Using default credentials for signing (local development)")
-                
+
         except Exception as e:
             logger.warning(f"Could not set up signing credentials: {str(e)}. Signed URLs may not work.")
             self.signing_credentials = None
 
-    async def upload_image(self, bucket_name: str, destination_blob_name: str, 
+    async def upload_image(self, bucket_name: str, destination_blob_name: str,
                            image_bytes: bytes, content_type: str) -> None:
         """Upload an image to a GCS bucket.
         
@@ -147,42 +146,42 @@ class GcsService:
         try:
             # Get the bucket
             bucket = self.client.bucket(bucket_name)
-            
+
             # Check if the bucket exists
             if not bucket.exists():
                 error_msg = f"Bucket '{bucket_name}' does not exist"
                 logger.error(error_msg)
                 raise GcsBucketNotFoundError(error_msg)
-            
+
             # Create a new blob
             blob = bucket.blob(destination_blob_name)
-            
+
             # Upload the image bytes to the blob
             blob.upload_from_string(
                 image_bytes,
                 content_type=content_type
             )
-            
+
             logger.info(
                 f"Successfully uploaded image to {bucket_name}/{destination_blob_name} "
                 f"(size: {len(image_bytes)} bytes, content-type: {content_type})"
             )
-            
+
         except GoogleCloudError as e:
             error_msg = f"Google Cloud error during upload to {bucket_name}/{destination_blob_name}: {str(e)}"
             logger.error(error_msg)
             raise GcsUploadError(error_msg)
-            
+
         except Exception as e:
             # Don't catch our own custom exceptions
             if isinstance(e, GcsBucketNotFoundError):
                 raise
-                
+
             error_msg = f"Unexpected error during upload to {bucket_name}/{destination_blob_name}: {str(e)}"
             logger.error(error_msg)
             raise GcsUploadError(error_msg)
 
-    async def generate_signed_url(self, bucket_name: str, blob_name: str, 
+    async def generate_signed_url(self, bucket_name: str, blob_name: str,
                                   expiration_hours: int = 1) -> str:
         """Generate a signed URL for a blob in a GCS bucket.
         
@@ -205,10 +204,10 @@ class GcsService:
                 error_msg = f"Bucket '{bucket_name}' does not exist"
                 logger.error(error_msg)
                 raise GcsBucketNotFoundError(error_msg)
-            
+
             # Get the blob
             blob = bucket.blob(blob_name)
-            
+
             # Try different approaches for signed URL generation
             try:
                 # First attempt: Use signing credentials if available
@@ -224,10 +223,10 @@ class GcsService:
                     return signed_url
                 else:
                     raise Exception("No signing credentials available")
-                    
+
             except Exception as signing_error:
                 logger.warning(f"Failed to generate signed URL with signing credentials: {str(signing_error)}")
-                
+
                 # Fallback: Try with default client (might work if service account has proper keys)
                 try:
                     signed_url = blob.generate_signed_url(
@@ -237,26 +236,26 @@ class GcsService:
                     )
                     logger.info(f"Generated signed URL using default client for {bucket_name}/{blob_name}")
                     return signed_url
-                    
+
                 except Exception as default_error:
                     logger.warning(f"Failed to generate signed URL with default client: {str(default_error)}")
-                    
+
                     # Final fallback: Generate a public URL if the bucket allows it
                     # This is not ideal for security but works as a temporary solution
                     public_url = f"https://storage.googleapis.com/{bucket_name}/{blob_name}"
                     logger.warning(f"Falling back to public URL (may not work if bucket is not public): {public_url}")
                     return public_url
-            
+
         except GoogleCloudError as e:
             error_msg = f"Google Cloud error generating signed URL for {bucket_name}/{blob_name}: {str(e)}"
             logger.error(error_msg)
             raise GcsSignedUrlError(error_msg)
-            
+
         except Exception as e:
             # Don't catch our own custom exceptions
             if isinstance(e, GcsBucketNotFoundError):
                 raise
-                
+
             error_msg = f"Unexpected error generating signed URL for {bucket_name}/{blob_name}: {str(e)}"
             logger.error(error_msg)
             raise GcsSignedUrlError(error_msg)

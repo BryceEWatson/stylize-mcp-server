@@ -1,0 +1,178 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stylize-mcp-server"
+version = "1.0.0"
+description = "AI-powered image stylization server with Model Context Protocol (MCP) integration"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Stylize MCP Team", email = "team@stylize-mcp.com"},
+]
+maintainers = [
+    {name = "Stylize MCP Team", email = "team@stylize-mcp.com"},
+]
+keywords = [
+    "ai", "image-generation", "stylization", "mcp", "dalle", "openai", 
+    "fastapi", "cloud", "rest-api", "python"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11", 
+    "Programming Language :: Python :: 3.12",
+    "Framework :: FastAPI",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.23.2",
+    "python-multipart>=0.0.6",
+    "pydantic>=2.4.2",
+    "python-dotenv>=1.0.0",
+    "fastmcp>=0.1.0",
+    "google-cloud-storage>=2.10.0",
+    "google-cloud-firestore>=2.13.1",
+    "google-cloud-vision>=3.4.4",
+    "google-cloud-pubsub>=2.18.4",
+    "google-cloud-secret-manager>=2.16.3",
+    "redis>=5.0.0",
+    "openai>=1.10.0,<2.0.0",
+    "pillow>=10.1.0",
+    "pyyaml>=6.0.1",
+    "requests>=2.31.0",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "PyJWT>=2.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "httpx>=0.25.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-xdist>=3.3.1",
+    "ruff>=0.1.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "coverage[toml]>=7.3.0",
+]
+prod = [
+    "gunicorn>=21.2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-username/stylize-mcp"
+Documentation = "https://github.com/your-username/stylize-mcp#readme"
+Repository = "https://github.com/your-username/stylize-mcp.git"
+"Bug Tracker" = "https://github.com/your-username/stylize-mcp/issues"
+"Demo" = "https://stylize-mcp-server-997481449751.us-central1.run.app"
+
+[project.scripts]
+stylize-server = "app.main:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+exclude = ["tests*", "docs*"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/**/*" = ["E501"]
+
+[tool.black]
+target-version = ['py310']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | venv
+  | venv_wsl
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+line_length = 88
+skip_gitignore = true
+
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/venv/*",
+    "*/venv_wsl/*", 
+    "*/__pycache__/*",
+    "*/build/*",
+    "*/dist/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = ["tests"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]

@@ -1,5 +1,15 @@
 # Stylize MCP Server
 
+[![CI/CD Pipeline](https://github.com/your-username/stylize-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/stylize-mcp/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/your-username/stylize-mcp/branch/main/graph/badge.svg)](https://codecov.io/gh/your-username/stylize-mcp)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://hub.docker.com/)
+[![Google Cloud](https://img.shields.io/badge/cloud-google-orange.svg)](https://cloud.google.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
+[![OpenAI](https://img.shields.io/badge/OpenAI-DALL·E%203-black.svg)](https://openai.com/)
+[![Status](https://img.shields.io/badge/status-production-brightgreen.svg)](https://stylize-mcp-server-997481449751.us-central1.run.app/health)
+
 ## Overview
 
 The Stylize MCP Server is a **fully operational** cloud-based service that transforms user-supplied images into multiple style-specific variants and provides AI agents with image generation capabilities via the Model Context Protocol (MCP). It leverages DALL·E 3 with a curated style bank, template-driven prompt engineering, content-safety filtering, and intelligent caching to deliver high-quality stylized images efficiently.

@@ -128,3 +128,31 @@ terraform.tfvars
 # Project specific
 secrets/
 terraform.tfvars
+venv_wsl/
+server.log
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Security
+*.pem
+*.key
+*.p12
+*.pfx
+service-account-key.json
+gcp-credentials.json
+
+# Development
+*.tmp
+*.temp
+temp/
+tmp/
+
+# MCP specific  
+mcp-logs/
