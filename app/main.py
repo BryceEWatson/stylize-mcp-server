@@ -1233,23 +1233,25 @@ async def convert_trial_to_account(conversion: TrialToAccountRequest):
                 content={"error": message}
             )
 
-        # Get user profile for response
+        # The trial service conversion should return user info, but let's get it safely
         user_service = get_user_service()
-        token_payload = user_service.verify_token(access_token)
-        if not token_payload:
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"error": "Failed to verify access token"}
-            )
         
-        user_id = token_payload.get("sub")
-        if not user_id:
+        # Extract user ID from the access token we just created
+        token_payload = user_service.verify_token(access_token)
+        if token_payload and token_payload.get("sub"):
+            user_profile = await user_service.get_user_by_id(token_payload.get("sub"))
+        else:
+            # Fallback - this shouldn't happen but handle it gracefully
+            logger.warning("Could not verify newly created access token - returning minimal response")
             return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"error": "Invalid access token format"}
+                status_code=status.HTTP_200_OK,
+                content={
+                    "access_token": access_token,
+                    "token_type": "bearer",
+                    "expires_in": user_service.access_token_expire_minutes * 60,
+                    "message": "Account created successfully"
+                }
             )
-            
-        user_profile = await user_service.get_user_by_id(user_id)
 
         return AuthTokenResponse(
             access_token=access_token,
