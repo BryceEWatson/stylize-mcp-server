@@ -30,6 +30,9 @@ class UserService:
         """Initialize the user service."""
         self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
         self.project_id = os.environ.get("GCP_PROJECT_ID")
+        
+        if not self.project_id:
+            logger.warning("GCP_PROJECT_ID environment variable not set - user service will be limited")
 
         # JWT configuration
         self.secret_key = os.environ.get("JWT_SECRET_KEY", secrets.token_hex(32))
@@ -41,9 +44,14 @@ class UserService:
         if self.project_id:
             try:
                 self.firestore_client = firestore.Client(project=self.project_id)
-                logger.info("Firestore client initialized for user management")
+                # Test connectivity
+                self.firestore_client.collection('_test').limit(1).get()
+                logger.info("Firestore client initialized and tested successfully for user management")
             except Exception as e:
-                logger.warning(f"Failed to initialize Firestore client: {str(e)}")
+                logger.error(f"Failed to initialize Firestore client for user service: {str(e)}")
+                # Don't fail silently - this is critical for user functionality
+                # But allow the service to start for health checks
+                self.firestore_client = None
 
         # Define subscription limits
         self.subscription_limits = {
