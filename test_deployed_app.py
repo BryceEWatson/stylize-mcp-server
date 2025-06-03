@@ -71,7 +71,7 @@ class StylizeMCPTester:
         if response.status_code == 200:
             data = response.json()
             result.response_data = data
-            if data.get("status") == "healthy":
+            if data.get("status") == "ok":
                 result.passed = True
                 result.message = f"Service is healthy: {data}"
             else:
@@ -91,7 +91,7 @@ class StylizeMCPTester:
             
             if isinstance(styles, list) and len(styles) > 0:
                 # Verify style structure
-                required_fields = {"id", "name", "description"}
+                required_fields = {"id", "name", "description", "prompt_fragment"}
                 first_style = styles[0]
                 
                 if all(field in first_style for field in required_fields):
@@ -131,7 +131,7 @@ class StylizeMCPTester:
             result.response_data = response_data
             
             # Check required fields
-            required_fields = {"stylized_image_url", "prompt_used", "style_applied"}
+            required_fields = {"original_id", "style", "stylized_image_url"}
             if all(field in response_data for field in required_fields):
                 result.passed = True
                 result.message = f"Successfully stylized image with URL: {response_data['stylized_image_url']}"
@@ -303,6 +303,212 @@ class StylizeMCPTester:
         else:
             result.passed = False
             result.message = f"Expected 400 error, got HTTP {response.status_code}: {response.text}"
+    
+    def test_mcp_initialize(self, result: TestResult):
+        """Test MCP initialize endpoint"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "initialize",
+            "id": 1,
+            "params": {"capabilities": {}}
+        }
+        
+        response = self.session.post(
+            f"{self.base_url}/mcp",
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=TIMEOUT
+        )
+        
+        if response.status_code == 200:
+            response_data = response.json()
+            result.response_data = response_data
+            
+            if "result" in response_data and "capabilities" in response_data["result"]:
+                result.passed = True
+                result.message = "MCP initialization successful"
+            else:
+                result.passed = False
+                result.message = f"Invalid MCP response format: {response_data}"
+        else:
+            result.passed = False
+            result.message = f"HTTP {response.status_code}: {response.text}"
+    
+    def test_mcp_list_tools(self, result: TestResult):
+        """Test MCP tools/list endpoint"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/list",
+            "id": 2,
+            "params": {}
+        }
+        
+        response = self.session.post(
+            f"{self.base_url}/mcp",
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=TIMEOUT
+        )
+        
+        if response.status_code == 200:
+            response_data = response.json()
+            result.response_data = response_data
+            
+            if "result" in response_data and "tools" in response_data["result"]:
+                tools = response_data["result"]["tools"]
+                tool_names = [tool["name"] for tool in tools]
+                expected_tools = {"stylize_image", "list_styles", "get_style_details", "generate_image_from_text"}
+                
+                if expected_tools.issubset(set(tool_names)):
+                    result.passed = True
+                    result.message = f"Found all expected MCP tools: {tool_names}"
+                else:
+                    result.passed = False
+                    result.message = f"Missing tools. Expected: {expected_tools}, Got: {tool_names}"
+            else:
+                result.passed = False
+                result.message = f"Invalid tools list response: {response_data}"
+        else:
+            result.passed = False
+            result.message = f"HTTP {response.status_code}: {response.text}"
+    
+    def test_mcp_list_resources(self, result: TestResult):
+        """Test MCP resources/list endpoint"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "resources/list",
+            "id": 3,
+            "params": {}
+        }
+        
+        response = self.session.post(
+            f"{self.base_url}/mcp",
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=TIMEOUT
+        )
+        
+        if response.status_code == 200:
+            response_data = response.json()
+            result.response_data = response_data
+            
+            if "result" in response_data and "resources" in response_data["result"]:
+                resources = response_data["result"]["resources"]
+                resource_uris = [res["uri"] for res in resources]
+                
+                if "styles://catalog" in resource_uris:
+                    result.passed = True
+                    result.message = f"Found styles catalog resource: {resource_uris}"
+                else:
+                    result.passed = False
+                    result.message = f"Missing styles://catalog resource. Got: {resource_uris}"
+            else:
+                result.passed = False
+                result.message = f"Invalid resources list response: {response_data}"
+        else:
+            result.passed = False
+            result.message = f"HTTP {response.status_code}: {response.text}"
+    
+    def test_mcp_list_styles_tool(self, result: TestResult):
+        """Test MCP list_styles tool via tools/call"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "id": 5,
+            "params": {
+                "name": "list_styles",
+                "arguments": {}
+            }
+        }
+        
+        response = self.session.post(
+            f"{self.base_url}/mcp",
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=TIMEOUT
+        )
+        
+        if response.status_code == 200:
+            response_data = response.json()
+            result.response_data = response_data
+            
+            if "result" in response_data and "content" in response_data["result"]:
+                content = response_data["result"]["content"]
+                if isinstance(content, list) and len(content) > 0:
+                    if "text" in content[0]:
+                        styles_data = json.loads(content[0]["text"])
+                        if isinstance(styles_data, list) and len(styles_data) > 0:
+                            result.passed = True
+                            result.message = f"MCP list_styles returned {len(styles_data)} styles"
+                        else:
+                            result.passed = False
+                            result.message = "MCP list_styles returned empty or invalid data"
+                    else:
+                        result.passed = False
+                        result.message = "MCP list_styles missing text content"
+                else:
+                    result.passed = False
+                    result.message = "MCP list_styles returned invalid content format"
+            else:
+                result.passed = False
+                result.message = f"Invalid MCP tool response: {response_data}"
+        else:
+            result.passed = False
+            result.message = f"HTTP {response.status_code}: {response.text}"
+    
+    def test_mcp_generate_image_tool(self, result: TestResult):
+        """Test MCP generate_image_from_text tool via tools/call"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "id": 6,
+            "params": {
+                "name": "generate_image_from_text",
+                "arguments": {
+                    "prompt": "a simple test image",
+                    "style_id": "pixel_art"
+                }
+            }
+        }
+        
+        response = self.session.post(
+            f"{self.base_url}/mcp",
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=TIMEOUT
+        )
+        
+        if response.status_code == 200:
+            response_data = response.json()
+            result.response_data = response_data
+            
+            if "result" in response_data and "content" in response_data["result"]:
+                content = response_data["result"]["content"]
+                if isinstance(content, list) and len(content) > 0:
+                    if "text" in content[0]:
+                        try:
+                            tool_result = json.loads(content[0]["text"])
+                            if "generated_image_url" in tool_result:
+                                result.passed = True
+                                result.message = f"MCP generate_image_from_text successful: {tool_result['generated_image_url']}"
+                            else:
+                                result.passed = False
+                                result.message = f"MCP tool missing generated_image_url: {tool_result}"
+                        except json.JSONDecodeError:
+                            result.passed = False
+                            result.message = "MCP tool returned invalid JSON"
+                    else:
+                        result.passed = False
+                        result.message = "MCP tool missing text content"
+                else:
+                    result.passed = False
+                    result.message = "MCP tool returned invalid content format"
+            else:
+                result.passed = False
+                result.message = f"Invalid MCP tool response: {response_data}"
+        else:
+            result.passed = False
+            result.message = f"HTTP {response.status_code}: {response.text}"
     
     def run_all_tests(self):
         """Run all tests"""

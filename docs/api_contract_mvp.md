@@ -17,7 +17,7 @@ Content-Type: multipart/form-data
 
 **Request Parameters:**
 - `image` (file, optional): An optional image file to be transformed with the specified style. Supported formats: JPEG, PNG. If not provided, the system will generate an image from text/context only.
-- `style_id` (string, required): The identifier of the style to apply. Must be a valid style ID from the style catalog.
+- `style_id` (string, optional): The identifier of the style to apply. Must be a valid style ID from the style catalog. **If omitted, the system will generate 4 images using randomly selected styles.**
 - `user_prompt` (string, optional): Text prompt to guide the image generation or transformation. Can be used with or without an input image.
 - `project_context` (string, optional): An optional JSON string containing structured contextual information about the project. This context will be analyzed by the server to refine the image generation prompt. If invalid JSON is provided, an error will be returned.
 

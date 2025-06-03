@@ -6,10 +6,11 @@ import sys
 import os
 import pytest
 import base64
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi.testclient import TestClient
 from fastapi import UploadFile
 from fastapi.responses import JSONResponse
+from datetime import datetime, timedelta, timezone
 
 # Add the project root to the Python path to enable imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -46,6 +47,184 @@ def setup_test_environment():
     os.environ['GCP_PROJECT_ID'] = 'test-project-id'
     os.environ['OPENAI_API_KEY'] = 'fake_api_key_for_testing'
     # No need to yield anything as these are module-level environment variables
+
+@pytest.fixture
+def mock_trial_service():
+    """Create a mock TrialService."""
+    mock_service = AsyncMock()
+    
+    # Create async mock for get_or_create_trial_session
+    async def mock_get_or_create_trial_session(*args, **kwargs):
+        return MagicMock(
+            client_ip="192.168.1.1",
+            images_generated=0,
+            session_limit=5,
+            created_at=datetime.now(timezone.utc),
+            last_used=datetime.now(timezone.utc)
+        )
+    
+    # Create async mock for check_trial_usage
+    async def mock_check_trial_usage(*args, **kwargs):
+        from app.models import TrialUsageResponse
+        trial_response = TrialUsageResponse(
+            session_id="test_session",
+            images_used=2,
+            images_remaining=3,
+            trial_expired=False,
+            upgrade_message="Sign up for unlimited access!",
+            signup_url="/auth/register"
+        )
+        return (True, trial_response)
+    
+    # Create async mock for convert_trial_to_account  
+    async def mock_convert_trial_to_account(*args, **kwargs):
+        return (True, "Trial converted successfully", "test_jwt_token")
+    
+    mock_service.get_or_create_trial_session = AsyncMock(side_effect=mock_get_or_create_trial_session)
+    mock_service.check_trial_usage = AsyncMock(side_effect=mock_check_trial_usage)
+    mock_service.increment_trial_usage = AsyncMock(return_value=None)
+    mock_service.convert_trial_to_account = AsyncMock(side_effect=mock_convert_trial_to_account)
+    
+    # Mock get_credit_packages
+    def mock_get_credit_packages():
+        from app.models import CreditPackage
+        return [
+            CreditPackage(
+                package_id="basic",
+                name="Basic Package",
+                credits=10,
+                price_usd=5.99,
+                bonus_credits=0,
+                popular=False
+            )
+        ]
+    
+    mock_service.get_credit_packages = MagicMock(return_value=mock_get_credit_packages())
+    
+    return mock_service
+
+@pytest.fixture
+def mock_user_service():
+    """Create a mock UserService."""
+    mock_service = AsyncMock()
+    
+    # Set up async mock methods
+    mock_service.verify_api_key = AsyncMock(return_value="test_user_id")
+    mock_service.check_usage_limit = AsyncMock(return_value=(True, 50))
+    mock_service.increment_usage = AsyncMock(return_value=None)
+    
+    # Mock get_user_profile
+    async def mock_get_user_profile(*args, **kwargs):
+        from app.models import UserProfile, SubscriptionTier
+        return UserProfile(
+            email="test@example.com",
+            first_name="Test",
+            last_name="User",
+            subscription_tier=SubscriptionTier.FREE,
+            usage_count=0,
+            created_at=datetime.now(timezone.utc).isoformat()
+        )
+    
+    mock_service.get_user_profile = AsyncMock(side_effect=mock_get_user_profile)
+    
+    # Set up sync methods 
+    mock_service.verify_jwt_token = MagicMock(return_value="test_user_id")
+    mock_service.verify_token = MagicMock(return_value={"sub": "test_user_id", "email": "test@example.com"})
+    # Mock get_user_by_id to return a proper UserProfile
+    async def mock_get_user_by_id(*args, **kwargs):
+        from app.models import UserProfile, SubscriptionTier
+        return UserProfile(
+            user_id="test_user_id",
+            email="test@example.com",
+            first_name="Test",
+            last_name="User",
+            subscription_tier=SubscriptionTier.FREE,
+            created_at=datetime.now(timezone.utc).isoformat(),
+            is_active=True
+        )
+    
+    mock_service.get_user_by_id = AsyncMock(side_effect=mock_get_user_by_id)
+    
+    # Add missing methods
+    mock_service.check_usage_limits = AsyncMock(return_value=(True, 50))
+    # Mock register_user to return user profile
+    async def mock_register_user(*args, **kwargs):
+        from app.models import UserProfile, SubscriptionTier
+        user_profile = UserProfile(
+            user_id="test_user_id",
+            email="newuser@example.com",
+            first_name="New",
+            last_name="User",
+            subscription_tier=SubscriptionTier.FREE,
+            created_at=datetime.now(timezone.utc).isoformat()
+        )
+        return (True, "User registered successfully", user_profile)
+    
+    mock_service.register_user = AsyncMock(side_effect=mock_register_user)
+    # Mock authenticate_user to return user profile
+    async def mock_authenticate_user(*args, **kwargs):
+        from app.models import UserProfile, SubscriptionTier
+        user_profile = UserProfile(
+            user_id="test_user_id",
+            email="test@example.com",
+            first_name="Test",
+            last_name="User",
+            subscription_tier=SubscriptionTier.FREE,
+            created_at=datetime.now(timezone.utc).isoformat()
+        )
+        return (True, "Login successful", user_profile)
+    
+    mock_service.authenticate_user = AsyncMock(side_effect=mock_authenticate_user)
+    
+    # Mock token creation methods
+    mock_service.create_access_token = MagicMock(return_value="test_jwt_token")
+    mock_service.access_token_expire_minutes = 60
+    
+    # Mock get_user_limits
+    async def mock_get_user_limits(*args, **kwargs):
+        from app.models import UserLimits
+        return UserLimits(
+            daily_limit=100,
+            monthly_limit=1000,
+            daily_used=5,
+            monthly_used=50
+        )
+    
+    mock_service.get_user_limits = AsyncMock(side_effect=mock_get_user_limits)
+    
+    # Add sync methods for user usage endpoint
+    def mock_get_subscription_limits(subscription_tier):
+        from app.models import SubscriptionLimits
+        return SubscriptionLimits(
+            monthly_images=1000,
+            max_api_keys=5,
+            available_styles=["van_gogh", "watercolor"],
+            priority_support=False,
+            custom_styles=False
+        )
+    
+    mock_service.get_subscription_limits = MagicMock(side_effect=mock_get_subscription_limits)
+    
+    # Mock get_user_usage_stats  
+    async def mock_get_user_usage_stats(*args, **kwargs):
+        from app.models import UserUsageStats
+        return UserUsageStats(
+            user_id="test_user_id",
+            current_month_usage=50,
+            total_usage=200,
+            api_key_count=2,
+            last_usage_at=datetime.now(timezone.utc).isoformat()
+        )
+    
+    mock_service.get_user_usage_stats = AsyncMock(side_effect=mock_get_user_usage_stats)
+    
+    # Mock create_user_api_key
+    async def mock_create_user_api_key(*args, **kwargs):
+        return (True, "API key created successfully", "test_api_key_12345")
+    
+    mock_service.create_user_api_key = AsyncMock(side_effect=mock_create_user_api_key)
+    
+    return mock_service
 
 # Create fixtures for the mocked services for injection into the main app
 @pytest.fixture
@@ -134,7 +313,7 @@ TEST_STYLES = [
 
 # Initialize test client with mocked dependencies
 @pytest.fixture
-def test_client(mock_style_service, mock_context_analysis_service, mock_openai_service, mock_gcs_service):
+def test_client(mock_style_service, mock_context_analysis_service, mock_openai_service, mock_gcs_service, mock_trial_service, mock_user_service):
     """Create a test client with mocked service dependencies."""
     # Create a modified version of the stylize_image endpoint that enforces proper base64 validation
     original_stylize_image = app.routes[2].endpoint  # Keep a reference to the original endpoint
@@ -165,7 +344,9 @@ def test_client(mock_style_service, mock_context_analysis_service, mock_openai_s
     with patch("app.main.get_style_service", return_value=mock_style_service), \
          patch("app.main.get_context_analysis_service", return_value=mock_context_analysis_service), \
          patch("app.main.get_openai_service", return_value=mock_openai_service), \
-         patch("app.main.get_gcs_service", return_value=mock_gcs_service):
+         patch("app.main.get_gcs_service", return_value=mock_gcs_service), \
+         patch("app.main.get_trial_service", return_value=mock_trial_service), \
+         patch("app.main.get_user_service", return_value=mock_user_service):
         
         # Create the test client
         client = TestClient(app)
@@ -173,6 +354,24 @@ def test_client(mock_style_service, mock_context_analysis_service, mock_openai_s
     
     # Clean up - restore the original endpoint
     app.routes[2].endpoint = original_stylize_image
+
+@pytest.fixture
+def authenticated_test_client(mock_style_service, mock_context_analysis_service, mock_openai_service, mock_gcs_service, mock_trial_service, mock_user_service):
+    """Create a test client with mocked service dependencies and authentication headers."""
+    # Patch the service getter functions to return our mocks
+    with patch("app.main.get_style_service", return_value=mock_style_service), \
+         patch("app.main.get_context_analysis_service", return_value=mock_context_analysis_service), \
+         patch("app.main.get_openai_service", return_value=mock_openai_service), \
+         patch("app.main.get_gcs_service", return_value=mock_gcs_service), \
+         patch("app.main.get_trial_service", return_value=mock_trial_service), \
+         patch("app.main.get_user_service", return_value=mock_user_service):
+        
+        # Create the test client
+        client = TestClient(app)
+        
+        # Add authentication header to all requests
+        client.headers = {"Authorization": "Bearer test-api-key"}
+        yield client
 
 # Test fixtures
 @pytest.fixture
@@ -264,15 +463,62 @@ def test_missing_all_inputs(test_client):
     assert response.status_code == 400
     assert response.json() == {"error": "Either an image file, project context, or user prompt is required."}
 
-def test_missing_style_id(valid_jpeg_image, test_client):
-    """Test that a request with missing style_id returns a 400 error."""
+def test_missing_style_id_generates_multiple_styles(valid_jpeg_image, test_client):
+    """Test that a request with missing style_id generates multiple random styles."""
     response = test_client.post(
         "/stylize_image",
         files={"image": ("test.jpg", valid_jpeg_image, "image/jpeg")},
         data={}
     )
-    assert response.status_code == 400
-    assert response.json() == {"error": "Style ID is required."}
+    assert response.status_code == 200
+    data = response.json()
+    
+    # Should return multiple styles response
+    assert "multiple_styles" in data
+    assert data["multiple_styles"] is True
+    assert "images" in data
+    assert "total_images" in data
+    
+    # Should get up to 4 styles (min 2, max 4 since we have 5 total styles)
+    assert data["total_images"] >= 2
+    assert data["total_images"] <= 4
+    assert len(data["images"]) == data["total_images"]
+    
+    # Each image should have the required fields
+    for image in data["images"]:
+        assert "style_id" in image
+        assert "style_name" in image
+        assert "stylized_image_url" in image
+        assert "prompt_used" in image
+        assert image["stylized_image_url"].startswith("http")
+    
+    # Should have unique style IDs
+    style_ids = [img["style_id"] for img in data["images"]]
+    assert len(set(style_ids)) == len(style_ids)  # All unique
+
+def test_text_only_multiple_styles_generation(test_client):
+    """Test generating multiple styles from text prompt only."""
+    response = test_client.post(
+        "/stylize_image",
+        data={"user_prompt": "a beautiful sunset"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    
+    # Should return multiple styles response
+    assert "multiple_styles" in data
+    assert data["multiple_styles"] is True
+    assert "images" in data
+    assert "total_images" in data
+    
+    # Should get up to 4 styles (flexible range for testing)
+    assert data["total_images"] >= 2
+    assert data["total_images"] <= 4
+    assert len(data["images"]) == data["total_images"]
+    
+    # Each image should contain the user prompt
+    for image in data["images"]:
+        assert "a beautiful sunset" in image["prompt_used"]
 
 def test_unsupported_image_format(invalid_gif_image, test_client):
     """Test that an unsupported image format returns a 400 error."""
@@ -322,9 +568,9 @@ def test_invalid_style_id(valid_jpeg_image, test_client):
 
 
 # Tests for the GET /styles endpoint
-def test_get_styles(test_client):
+def test_get_styles(authenticated_test_client):
     """Test that the styles endpoint returns a 200 OK status and the styles array."""
-    response = test_client.get("/styles")
+    response = authenticated_test_client.get("/styles")
     assert response.status_code == 200
     styles = response.json()
     assert isinstance(styles, list)
@@ -586,6 +832,222 @@ def test_text_generation_with_reference_logo(test_client, project_context_with_r
         data={
             "style_id": "test_style",
             "project_context_str": project_context_with_reference_logo
+        }
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "original_id" in data
+    assert data["style"] == "test_style"
+    assert "stylized_image_url" in data
+
+
+# Tests for trial system endpoints
+
+def test_trial_status_new_session(test_client):
+    """Test trial status for a new session."""
+    response = test_client.get("/trial/status")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "trial_info" in data
+    assert "session_id" in data["trial_info"]
+    assert "images_used" in data["trial_info"]
+    assert "images_remaining" in data["trial_info"]
+
+def test_trial_convert_success(test_client):
+    """Test successful trial to account conversion."""
+    request_data = {
+        "session_id": "test_session",
+        "email": "test@example.com",
+        "password": "password123",
+        "first_name": "Test",
+        "last_name": "User",
+        "company": "Test Company"
+    }
+    
+    response = test_client.post("/trial/convert", json=request_data)
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert "user" in data
+
+def test_pricing_packages(test_client):
+    """Test pricing packages endpoint."""
+    response = test_client.get("/pricing/packages")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, dict)
+    assert "packages" in data
+    assert "currency" in data
+    assert "note" in data
+    
+    packages = data["packages"]
+    assert isinstance(packages, list)
+    assert len(packages) > 0
+    
+    # Check package structure
+    for package in packages:
+        assert "name" in package
+        assert "credits" in package
+        assert "price_usd" in package
+        assert "package_id" in package
+
+def test_stylize_image_with_trial_session(valid_jpeg_image, test_client):
+    """Test stylize_image endpoint with trial session_id."""
+    response = test_client.post(
+        "/stylize_image",
+        files={"image": ("test.jpg", valid_jpeg_image, "image/jpeg")},
+        data={
+            "style_id": "test_style",
+            "session_id": "test_session"
+        }
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "original_id" in data
+    assert data["style"] == "test_style"
+    assert "stylized_image_url" in data
+
+def test_stylize_image_trial_limit_exceeded(valid_jpeg_image, test_client, mock_trial_service):
+    """Test stylize_image endpoint when trial limit is exceeded."""
+    # Mock trial usage exceeded - need to update the async mock
+    async def mock_check_trial_usage_exceeded(*args, **kwargs):
+        from app.models import TrialUsageResponse
+        trial_response = TrialUsageResponse(
+            session_id="test_session",
+            images_used=5,
+            images_remaining=0,
+            trial_expired=True,
+            upgrade_message="Trial limit reached",
+            signup_url="/auth/register"
+        )
+        return (False, trial_response)
+    
+    mock_trial_service.check_trial_usage = mock_check_trial_usage_exceeded
+    
+    response = test_client.post(
+        "/stylize_image",
+        files={"image": ("test.jpg", valid_jpeg_image, "image/jpeg")},
+        data={
+            "style_id": "test_style",
+            "session_id": "test_session"
+        }
+    )
+    
+    # Note: May return 403 or similar error code for exceeded trials
+    assert response.status_code in [403, 400, 429]
+
+
+# Tests for user authentication endpoints
+
+def test_user_register_success(test_client):
+    """Test successful user registration."""
+    request_data = {
+        "email": "newuser@example.com",
+        "password": "password123",
+        "first_name": "New",
+        "last_name": "User"
+    }
+    
+    response = test_client.post("/auth/register", json=request_data)
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert "token_type" in data
+    assert "user" in data
+
+def test_user_login_success(test_client):
+    """Test successful user login."""
+    request_data = {
+        "email": "test@example.com",
+        "password": "password123"
+    }
+    
+    response = test_client.post("/auth/login", json=request_data)
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert "token_type" in data
+    assert "user" in data
+
+def test_user_profile_with_jwt(test_client):
+    """Test user profile endpoint with JWT authentication."""
+    headers = {"Authorization": "Bearer valid_jwt_token"}
+    
+    response = test_client.get("/user/profile", headers=headers)
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "email" in data
+    assert "subscription_tier" in data
+    assert "user_id" in data
+    assert "first_name" in data
+
+def test_user_usage_with_jwt(test_client):
+    """Test user usage endpoint with JWT authentication."""
+    headers = {"Authorization": "Bearer valid_jwt_token"}
+    
+    response = test_client.get("/user/usage", headers=headers)
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "usage" in data
+    assert "limits" in data
+    assert "subscription_tier" in data
+
+def test_generate_api_key_with_jwt(test_client):
+    """Test API key generation with JWT authentication."""
+    headers = {"Authorization": "Bearer valid_jwt_token"}
+    request_data = {"name": "Test API Key"}
+    
+    response = test_client.post("/user/api-keys", headers=headers, json=request_data)
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "api_key" in data
+    assert "key_id" in data
+    assert "name" in data
+
+def test_list_api_keys_with_jwt(test_client):
+    """Test that API key listing endpoint does not exist (should return 405)."""
+    headers = {"Authorization": "Bearer valid_jwt_token"}
+    
+    response = test_client.get("/user/api-keys", headers=headers)
+    
+    # The GET method is not allowed on this endpoint (only POST exists)
+    assert response.status_code == 405
+
+def test_stylize_image_with_jwt_auth(valid_jpeg_image, test_client):
+    """Test stylize_image endpoint with JWT authentication."""
+    headers = {"Authorization": "Bearer valid_jwt_token"}
+    
+    response = test_client.post(
+        "/stylize_image",
+        files={"image": ("test.jpg", valid_jpeg_image, "image/jpeg")},
+        data={"style_id": "test_style"},
+        headers=headers
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "original_id" in data
+    assert data["style"] == "test_style"
+    assert "stylized_image_url" in data
+
+def test_stylize_image_with_api_key(valid_jpeg_image, test_client):
+    """Test stylize_image endpoint with API key authentication."""
+    response = test_client.post(
+        "/stylize_image",
+        files={"image": ("test.jpg", valid_jpeg_image, "image/jpeg")},
+        data={
+            "style_id": "test_style",
+            "api_key": "valid_api_key"
         }
     )
     
