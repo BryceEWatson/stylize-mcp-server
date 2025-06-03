@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purchase Successful - Stylize MCP</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        .success-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #2d3748;
+            font-size: 28px;
+            margin-bottom: 12px;
+        }
+        .header p {
+            color: #718096;
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+        .credit-info {
+            background: #f0fff4;
+            border: 2px solid #9ae6b4;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+        }
+        .credit-info .new-balance {
+            font-size: 32px;
+            font-weight: bold;
+            color: #22543d;
+            margin-bottom: 8px;
+        }
+        .credit-info .label {
+            color: #2f855a;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .actions {
+            display: flex;
+            gap: 16px;
+            flex-direction: column;
+        }
+        .btn {
+            padding: 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+            color: white;
+        }
+        .btn-secondary {
+            background: #edf2f7;
+            color: #4a5568;
+            border: 2px solid #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">✅</div>
+        
+        <div class="header">
+            <h1>Purchase Successful!</h1>
+            <p>{{ message }}</p>
+        </div>
+
+        {% if credits %}
+        <div class="credit-info">
+            <div class="new-balance">{{ credits.credits_balance }}</div>
+            <div class="label">Total Credits Available</div>
+        </div>
+        {% endif %}
+
+        <div class="actions">
+            <a href="/web/dashboard" class="btn btn-primary">🎨 Back to Dashboard</a>
+            <a href="/stylize_image" class="btn btn-secondary">🖼️ Generate Images</a>
+        </div>
+    </div>
+</body>
+</html>

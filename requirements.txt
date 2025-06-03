@@ -5,6 +5,7 @@ python-multipart>=0.0.6
 pydantic>=2.4.2
 python-dotenv>=1.0.0
 fastmcp>=0.1.0  # For MCP server integration
+jinja2>=3.1.0  # For HTML templates
 
 # Cloud libraries
 google-cloud-storage>=2.10.0

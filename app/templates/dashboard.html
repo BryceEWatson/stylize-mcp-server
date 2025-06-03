@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Stylize MCP</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f7fafc;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #2d3748;
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+        .header .welcome {
+            color: #718096;
+            font-size: 18px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+            padding: 24px;
+            text-align: center;
+        }
+        .stat-card .icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+        .stat-card .number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 4px;
+        }
+        .stat-card .label {
+            color: #718096;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .packages-section {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+            padding: 30px;
+        }
+        .packages-section h2 {
+            color: #2d3748;
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .packages-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .package-card {
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .package-card:hover {
+            border-color: #4299e1;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        }
+        .package-card.popular {
+            border-color: #f6ad55;
+            background: linear-gradient(135deg, #fff5e6 0%, #fef5e7 100%);
+        }
+        .package-card.popular::before {
+            content: "Most Popular";
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #f6ad55;
+            color: white;
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .package-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+        .package-price {
+            font-size: 32px;
+            font-weight: bold;
+            color: #4299e1;
+            margin-bottom: 12px;
+        }
+        .package-credits {
+            color: #718096;
+            margin-bottom: 16px;
+        }
+        .package-bonus {
+            background: #e6fffa;
+            color: #00a69c;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+        .btn.popular {
+            background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
+        }
+        .success {
+            background: #f0fff4;
+            color: #22543d;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 2px solid #9ae6b4;
+        }
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 2px solid #fc8181;
+        }
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #718096;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/web/logout" class="logout-btn">Logout</a>
+        
+        <div class="header">
+            <h1>🎨 Your Dashboard</h1>
+            <p class="welcome">Welcome back, {{ user.first_name }}!</p>
+        </div>
+
+        {% if success %}
+        <div class="success">{{ success }}</div>
+        {% endif %}
+
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="icon">💳</div>
+                <div class="number">{{ credits.credits_balance }}</div>
+                <div class="label">Credits Available</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="icon">🖼️</div>
+                <div class="number">{{ usage.current_month_usage }}</div>
+                <div class="label">Images This Month</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="icon">📊</div>
+                <div class="number">{{ subscription_limits.monthly_images }}</div>
+                <div class="label">Monthly Limit</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="icon">🎯</div>
+                <div class="number">{{ usage.total_usage }}</div>
+                <div class="label">Total Images</div>
+            </div>
+        </div>
+
+        <div class="packages-section">
+            <h2>💎 Purchase Additional Credits</h2>
+            <div class="packages-grid">
+                {% for package in available_packages %}
+                <div class="package-card {% if package.popular %}popular{% endif %}">
+                    <div class="package-name">{{ package.name }}</div>
+                    <div class="package-price">${{ "%.2f"|format(package.price_usd) }}</div>
+                    <div class="package-credits">{{ package.credits }} credits</div>
+                    {% if package.bonus_credits > 0 %}
+                    <div class="package-bonus">+{{ package.bonus_credits }} bonus credits!</div>
+                    {% endif %}
+                    <form method="POST" action="/web/purchase">
+                        <input type="hidden" name="package_id" value="{{ package.package_id }}">
+                        <button type="submit" class="btn {% if package.popular %}popular{% endif %}">
+                            Purchase {{ package.credits + package.bonus_credits }} Credits
+                        </button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

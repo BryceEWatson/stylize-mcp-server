@@ -15,8 +15,9 @@ from datetime import datetime, timezone
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.templating import Jinja2Templates
 
 from app.auth_service import AuthService
 from app.context_analysis_service import ContextAnalysisService
@@ -102,6 +103,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=mcp_app.lifespan if mcp_app else None
 )
+
+# Initialize Jinja2 templates
+templates = Jinja2Templates(directory="app/templates")
 
 # Service instances (initialized lazily via getters)
 _style_service = None
@@ -1399,6 +1403,190 @@ async def get_user_dashboard(auth=Depends(require_styles_permission)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"error": "Failed to get dashboard information"}
         )
+
+# Web interface endpoints for trial upgrade and credit purchase
+@app.get("/web/upgrade", response_class=HTMLResponse)
+async def show_trial_upgrade_form(request: Request, session_id: str = None):
+    """Show trial upgrade form."""
+    try:
+        trial_service = get_trial_service()
+        
+        # If no session_id provided, get from trial status
+        if not session_id:
+            # This would typically come from a cookie or query param
+            # For demo, we'll create a fresh trial
+            trial_session = await trial_service.get_or_create_trial_session(
+                ip_address=request.client.host or "unknown",
+                user_agent=request.headers.get("user-agent")
+            )
+            session_id = trial_session.session_id
+        
+        # Get trial status
+        can_use, trial_info = await trial_service.check_trial_usage(session_id)
+        
+        return templates.TemplateResponse("trial_upgrade.html", {
+            "request": request,
+            "session_id": session_id,
+            "trial_info": trial_info,
+            "error": None
+        })
+        
+    except Exception as e:
+        logger.error(f"Error showing trial upgrade form: {str(e)}")
+        return templates.TemplateResponse("trial_upgrade.html", {
+            "request": request,
+            "session_id": session_id,
+            "trial_info": None,
+            "error": "Unable to load trial information"
+        })
+
+@app.post("/web/trial/upgrade", response_class=HTMLResponse)
+async def process_trial_upgrade(
+    request: Request,
+    session_id: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    company: str = Form(None)
+):
+    """Process trial upgrade form submission."""
+    try:
+        trial_service = get_trial_service()
+        
+        # Create conversion request
+        from app.models import TrialToAccountRequest
+        conversion_request = TrialToAccountRequest(
+            session_id=session_id,
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            company=company
+        )
+        
+        # Convert trial to account
+        success, message, result = await trial_service.convert_trial_to_account(conversion_request)
+        
+        if not success:
+            # Show form again with error
+            trial_service = get_trial_service()
+            can_use, trial_info = await trial_service.check_trial_usage(session_id)
+            
+            return templates.TemplateResponse("trial_upgrade.html", {
+                "request": request,
+                "session_id": session_id,
+                "trial_info": trial_info,
+                "error": message
+            })
+        
+        # Success - redirect to dashboard
+        access_token = result["access_token"]
+        response = RedirectResponse(url="/web/dashboard", status_code=303)
+        response.set_cookie(key="access_token", value=access_token, httponly=True)
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error processing trial upgrade: {str(e)}")
+        return templates.TemplateResponse("trial_upgrade.html", {
+            "request": request,
+            "session_id": session_id,
+            "trial_info": None,
+            "error": "Upgrade failed. Please try again."
+        })
+
+@app.get("/web/dashboard", response_class=HTMLResponse)
+async def show_user_dashboard(request: Request, success: str = None):
+    """Show user dashboard."""
+    try:
+        # Get access token from cookie
+        access_token = request.cookies.get("access_token")
+        if not access_token:
+            return RedirectResponse(url="/web/login", status_code=303)
+        
+        # Verify token and get user
+        user_service = get_user_service()
+        token_payload = user_service.verify_token(access_token)
+        if not token_payload:
+            return RedirectResponse(url="/web/login", status_code=303)
+        
+        user_id = token_payload.get("sub")
+        user = await user_service.get_user_by_id(user_id)
+        if not user:
+            return RedirectResponse(url="/web/login", status_code=303)
+        
+        # Get dashboard data
+        trial_service = get_trial_service()
+        user_credits = await user_service.get_user_credits(user_id)
+        user_usage = await user_service.get_user_usage_stats(user_id)
+        subscription_limits = user_service.get_subscription_limits(user.subscription_tier)
+        credit_packages = trial_service.get_credit_packages()
+        
+        return templates.TemplateResponse("dashboard.html", {
+            "request": request,
+            "user": user,
+            "credits": user_credits,
+            "usage": user_usage,
+            "subscription_limits": subscription_limits,
+            "available_packages": credit_packages,
+            "success": success,
+            "error": None
+        })
+        
+    except Exception as e:
+        logger.error(f"Error showing dashboard: {str(e)}")
+        return RedirectResponse(url="/web/login", status_code=303)
+
+@app.post("/web/purchase")
+async def process_credit_purchase(
+    request: Request,
+    package_id: str = Form(...)
+):
+    """Process credit purchase."""
+    try:
+        # Get access token from cookie
+        access_token = request.cookies.get("access_token")
+        if not access_token:
+            return RedirectResponse(url="/web/login", status_code=303)
+        
+        # Verify token and get user
+        user_service = get_user_service()
+        token_payload = user_service.verify_token(access_token)
+        if not token_payload:
+            return RedirectResponse(url="/web/login", status_code=303)
+        
+        user_id = token_payload.get("sub")
+        
+        # Purchase credits
+        success, message = await user_service.purchase_credits(user_id, package_id)
+        
+        if not success:
+            return RedirectResponse(url=f"/web/dashboard?error={message}", status_code=303)
+        
+        # Get updated credits for success page
+        user_credits = await user_service.get_user_credits(user_id)
+        
+        return templates.TemplateResponse("purchase_success.html", {
+            "request": request,
+            "message": message,
+            "credits": user_credits
+        })
+        
+    except Exception as e:
+        logger.error(f"Error processing credit purchase: {str(e)}")
+        return RedirectResponse(url="/web/dashboard?error=Purchase failed", status_code=303)
+
+@app.get("/web/login", response_class=HTMLResponse)
+async def show_login_form(request: Request):
+    """Redirect to trial upgrade for now (simplified flow)."""
+    return RedirectResponse(url="/web/upgrade", status_code=303)
+
+@app.get("/web/logout")
+async def logout(request: Request):
+    """Logout user."""
+    response = RedirectResponse(url="/web/upgrade", status_code=303)
+    response.delete_cookie(key="access_token")
+    return response
 
 # The MCP endpoint is now handled by the router included above
 
