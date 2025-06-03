@@ -21,10 +21,26 @@ uvicorn app.main:app --reload
 uvicorn app.main:app --host 0.0.0.0 --port 8080
 ```
 
-### 🆓 Freemium Trial System
-The server now supports **anonymous trial usage** - no authentication required for testing!
+### 🆓 Freemium Trial System & Web Interface
+The server now supports **anonymous trial usage** with a complete web interface for user conversion and credit purchases!
 
-#### Testing Trial Access Locally
+#### Web Interface for Users
+```bash
+# Trial Upgrade Web Page (users can create accounts)
+https://stylize-mcp-server-997481449751.us-central1.run.app/web/upgrade
+
+# User Dashboard (authenticated users)
+https://stylize-mcp-server-997481449751.us-central1.run.app/web/dashboard
+
+# Key Web Endpoints:
+# GET /web/upgrade - Trial upgrade form with session tracking
+# POST /web/trial/upgrade - Process trial conversion
+# GET /web/dashboard - User dashboard with credits and purchase options
+# POST /web/purchase - Credit purchase processing
+# GET /web/logout - User logout
+```
+
+#### Testing Trial Access via API
 ```bash
 # Test anonymous trial usage with specific style (no auth needed)
 curl -X POST http://localhost:8080/stylize_image \
@@ -92,6 +108,45 @@ curl http://localhost:8080/trial/status
 
 # View pricing packages
 curl http://localhost:8080/pricing/packages
+
+# Convert trial to user account
+curl -X POST http://localhost:8080/trial/convert \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "trial-abc123",
+    "email": "user@example.com",
+    "password": "password123",
+    "first_name": "John",
+    "last_name": "Doe",
+    "company": "Example Corp"
+  }'
+```
+
+### 💳 User Credit System
+Authenticated users have access to a credit-based system for purchasing additional image generations.
+
+#### User Credit Management
+```bash
+# Get user credit balance (requires authentication)
+curl -H "Authorization: Bearer user-jwt-token" \
+     http://localhost:8080/user/credits
+
+# Purchase credits (requires authentication)
+curl -H "Authorization: Bearer user-jwt-token" \
+     -X POST http://localhost:8080/user/purchase-credits \
+     -H "Content-Type: application/json" \
+     -d '{"package_id": "starter"}'
+
+# Get user dashboard with complete information
+curl -H "Authorization: Bearer user-jwt-token" \
+     http://localhost:8080/user/dashboard
+```
+
+#### Available Credit Packages
+- **Starter Pack**: 50 credits + 5 bonus credits for $9.99
+- **Popular Pack**: 200 credits + 25 bonus credits for $29.99 ⭐ Most Popular
+- **Pro Pack**: 500 credits + 75 bonus credits for $59.99
+- **Enterprise Pack**: 1000 credits + 200 bonus credits for $99.99
 ```
 
 ### Authentication Configuration
@@ -243,20 +298,22 @@ terraform apply
 
 ### Core Services Architecture
 The application is a FastAPI-based server that provides:
-1. **REST API** for image stylization (`/stylize_image`), style management (`/styles`), and health checks
-2. **MCP Server** endpoint at `/mcp` for AI agent integration via FastMCP
-3. **Two-stage image generation pipeline**:
+1. **REST API** for image stylization (`/stylize_image`), style management (`/styles`), user management, and health checks
+2. **Web Interface** for trial upgrade (`/web/upgrade`) and user dashboard (`/web/dashboard`) with credit purchasing
+3. **MCP Server** endpoint at `/mcp` for AI agent integration via FastMCP
+4. **User Management System** with trial sessions, user accounts, credit purchasing, and JWT authentication
+5. **Two-stage image generation pipeline**:
    - Context analysis using GPT-4V when reference images are provided
    - Prompt generation and image creation using DALL·E 3
    - Results are cached in Redis and stored in GCS
 
 ### Service Dependencies
 - **OpenAI API**: GPT-4V for analysis, DALL·E 3 for generation
-- **Google Cloud Storage**: Image persistence
-- **Firestore**: Style catalog and usage tracking
+- **Google Cloud Storage**: Image persistence and public access
+- **Firestore**: User accounts, trial sessions, credit balances, usage tracking, and API key storage
 - **Cloud Vision API**: SafeSearch content filtering
-- **Redis (Memorystore)**: Response caching
-- **Secret Manager**: API key storage
+- **Redis (Memorystore)**: Response caching (optional, uses in-memory fallback)
+- **Secret Manager**: OpenAI API key and admin credentials storage
 
 ### Key Implementation Details
 - The application supports context-aware generation through a `ProjectContext` model for brand consistency
@@ -285,8 +342,8 @@ The test suite covers all major components:
 - **Region**: `us-central1`
 - **Project**: `stylize-mcp-server` (GCP project ID: 997481449751)
 - **URL**: https://stylize-mcp-server-997481449751.us-central1.run.app
-- **Current Revision**: `stylize-mcp-server-00023-9rn`
-- **Image**: `us-central1-docker.pkg.dev/stylize-mcp-server/stylize-repo/stylize-mcp-server:b285416500d2a181a70a6360778ef9f3f0f2bd96`
+- **Current Status**: Fully operational with web interface and credit system
+- **Last Updated**: 2025-06-03 (Complete trial upgrade and credit purchase system)
 
 ### Monitoring and Logs
 ```bash
@@ -297,11 +354,14 @@ gcloud logging read "resource.type=cloud_run_revision AND resource.labels.servic
 gcloud run services describe stylize-mcp-server --region=us-central1
 ```
 
-### ✅ Recent Fixes (All Issues Resolved)
-- **GCS Signed URL Generation**: FIXED - Images now publicly accessible
-  - Solution: Added `allUsers` role with `storage.objectViewer` permission to GCS bucket
-  - Result: All generated images are accessible via public URLs
-  - Status: `/stylize_image` endpoint now returns working, accessible image URLs
+### ✅ System Status (Fully Operational)
+- **✅ Firestore Integration**: Complete user management with trial sessions and credit tracking
+- **✅ Trial System**: Anonymous users get 5 free images with seamless upgrade flow
+- **✅ Web Interface**: Beautiful forms for trial upgrade and credit purchase
+- **✅ Credit System**: Complete credit purchase flow with 4 pricing tiers
+- **✅ Image Generation**: Both single-style and multi-style generation working
+- **✅ Authentication**: JWT-based user auth and API key management
+- **✅ GCS Integration**: All generated images publicly accessible via signed URLs
 
 ### Authentication Development Notes
 - For development: Set `AUTH_DEV_BYPASS=true` and `DEV_API_KEY=test-key` to use a simple development key

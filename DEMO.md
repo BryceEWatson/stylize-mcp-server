@@ -6,13 +6,52 @@
 
 ### **Instant Demo (No Setup Required)**
 - **🌐 Live API**: https://stylize-mcp-server-997481449751.us-central1.run.app
+- **🎨 Web Interface**: https://stylize-mcp-server-997481449751.us-central1.run.app/web/upgrade
+- **📊 User Dashboard**: https://stylize-mcp-server-997481449751.us-central1.run.app/web/dashboard  
 - **📊 Health Check**: https://stylize-mcp-server-997481449751.us-central1.run.app/health
 - **📖 API Docs**: https://stylize-mcp-server-997481449751.us-central1.run.app/docs
 - **💎 Free Trial**: 5 images immediately, no signup required!
 
 ---
 
-## 🎯 Try These Demo Commands
+## 🌐 Web Interface Demo
+
+### **1. Trial Upgrade Experience**
+🔗 **Visit**: https://stylize-mcp-server-997481449751.us-central1.run.app/web/upgrade
+
+**What you'll see:**
+- ✨ Beautiful gradient design with modern styling
+- 📊 Real-time trial status (images remaining) 
+- 📝 Account creation form with validation
+- 🎯 Clear benefits and upgrade messaging
+- 📱 Mobile-responsive design
+
+**Demo Flow:**
+1. Page automatically creates trial session
+2. Shows remaining free images (5 total)
+3. Fill out upgrade form to create account
+4. Redirected to dashboard upon success
+
+### **2. User Dashboard Experience**
+🔗 **Visit**: https://stylize-mcp-server-997481449751.us-central1.run.app/web/dashboard
+*(Requires account - try upgrade flow first)*
+
+**What you'll see:**
+- 💳 Credit balance and usage statistics
+- 📊 Professional dashboard with stats cards
+- 💎 Credit purchase options with pricing tiers
+- 🛒 One-click purchase buttons
+- 🎨 Modern SaaS-quality interface
+
+**Features:**
+- Cookie-based authentication (seamless UX)
+- Real-time credit balance updates
+- Responsive grid layout for all devices
+- Professional purchase confirmation pages
+
+---
+
+## 🎯 API Demo Commands
 
 ### **1. Generate Single Style Image**
 ```bash
@@ -158,6 +197,53 @@ curl -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize
 
 ---
 
+## 💳 Credit Purchase Demo
+
+### **View Available Packages**
+```bash
+curl https://stylize-mcp-server-997481449751.us-central1.run.app/pricing/packages
+```
+
+**Response:**
+```json
+{
+  "packages": [
+    {
+      "package_id": "starter",
+      "name": "Starter Pack", 
+      "credits": 50,
+      "price_usd": 9.99,
+      "bonus_credits": 5,
+      "popular": false
+    },
+    {
+      "package_id": "popular",
+      "name": "Popular Pack",
+      "credits": 200, 
+      "price_usd": 29.99,
+      "bonus_credits": 25,
+      "popular": true
+    }
+  ]
+}
+```
+
+### **Purchase Credits (API)**
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/user/purchase-credits \
+  -H "Content-Type: application/json" \
+  -d '{"package_id": "starter"}'
+```
+
+### **Check Credit Balance**
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  https://stylize-mcp-server-997481449751.us-central1.run.app/user/credits
+```
+
+---
+
 ## 📈 Performance & Limits
 
 | Feature | Limit | Notes |
@@ -218,12 +304,16 @@ curl -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize
 
 ## 🎊 What Makes This Demo Special
 
+✅ **Complete Web Interface**: Beautiful forms and dashboards (not just API)  
 ✅ **Production-Ready**: Real deployment, not just a prototype  
 ✅ **No Setup Required**: Try immediately with trial system  
-✅ **Multiple Interfaces**: REST API + MCP Protocol  
+✅ **Credit Purchase System**: Full e-commerce flow with 4 pricing tiers  
+✅ **Multiple Interfaces**: Web UI + REST API + MCP Protocol  
+✅ **Multi-Style Generation**: Generate 4 different styles in one request  
 ✅ **Enterprise Features**: Authentication, rate limiting, monitoring  
 ✅ **High Quality**: DALL·E 3 integration with curated prompts  
 ✅ **Cost-Optimized**: Intelligent caching and usage controls  
+✅ **Mobile-Responsive**: Works perfectly on all devices  
 
 ---
 

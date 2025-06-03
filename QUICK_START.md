@@ -4,7 +4,23 @@
 
 The Stylize MCP Server is **live and fully operational**. Get started in minutes:
 
-## Option 1: Claude Desktop (Recommended)
+## Option 1: Web Interface (Easiest)
+
+### Step 1: Try the Trial
+- Visit: https://stylize-mcp-server-997481449751.us-central1.run.app/web/upgrade
+- Create a free account with 100 images/month
+- Access the professional user dashboard
+
+### Step 2: Purchase Additional Credits (Optional)
+- Visit dashboard: https://stylize-mcp-server-997481449751.us-central1.run.app/web/dashboard  
+- Choose from 4 pricing tiers ($9.99 - $99.99)
+- Get bonus credits with every purchase
+
+**That's it!** Complete web interface with forms, dashboards, and credit purchasing.
+
+---
+
+## Option 2: Claude Desktop (For MCP Users)
 
 ### Step 1: Download Claude Desktop
 - Get Claude Desktop from [claude.ai](https://claude.ai/download)
@@ -37,7 +53,7 @@ Try these prompts:
 - "Make a flat UI icon for a music app"
 - "What image styles are available?"
 
-## Option 2: Direct REST API
+## Option 3: Direct REST API
 
 ### Test the Service
 ```bash

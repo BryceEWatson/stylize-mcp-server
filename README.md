@@ -14,12 +14,14 @@
 
 The Stylize MCP Server is a **fully operational** cloud-based service that transforms user-supplied images into multiple style-specific variants and provides AI agents with image generation capabilities via the Model Context Protocol (MCP). It leverages DALL·E 3 with a curated style bank, template-driven prompt engineering, content-safety filtering, and intelligent caching to deliver high-quality stylized images efficiently.
 
-## ✅ Current Status: **FULLY FUNCTIONAL** + **FREEMIUM TRIAL READY**
+## ✅ Current Status: **FULLY FUNCTIONAL** + **WEB INTERFACE READY**
 
 **🚀 Live Production Deployment:**
 - **REST API**: https://stylize-mcp-server-997481449751.us-central1.run.app
+- **Web Interface**: https://stylize-mcp-server-997481449751.us-central1.run.app/web/upgrade
 - **MCP Endpoint**: https://stylize-mcp-server-997481449751.us-central1.run.app/mcp/sse
 - **Free Trial**: **5 images immediately, no signup required!**
+- **User Dashboard**: Complete credit purchase and account management
 - **Health Status**: All services operational
 - **Image Generation**: Working with public access URLs
 - **MCP Integration**: Ready for Claude Desktop and other MCP clients
@@ -38,12 +40,15 @@ curl -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize
 
 ## Completed Features
 
+✅ **Complete Web Interface** - Trial upgrade forms and user dashboard  
+✅ **Credit Purchase System** - One-click credit purchasing with 4 pricing tiers  
 ✅ **Freemium Trial System** - 5 free images, no signup required  
 ✅ **User Registration & Authentication** - Self-service account creation  
 ✅ **Subscription Tiers** - Free (100/mo), Pro (1K/mo), Enterprise (10K/mo)  
 ✅ **Credit System** - Pay-as-you-go pricing ($9.99-$99.99 packages)  
 ✅ **REST API endpoint for image stylization** (`POST /stylize_image`)  
 ✅ **MCP Server integration** with 6 tools including trial support  
+✅ **Multi-style generation** - Generate 4 random styles in one request  
 ✅ **Curated style catalog** with 5 specialized styles  
 ✅ **DALL·E 3 integration** for high-quality image generation  
 ✅ **Content safety filtering** with Cloud Vision SafeSearch  
@@ -52,9 +57,30 @@ curl -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize
 ✅ **Infrastructure as code** deployed on Google Cloud Platform  
 ✅ **Comprehensive testing suite** and documentation
 
-## 🚀 Getting Started (3 Ways to Use)
+## 🚀 Getting Started (4 Ways to Use)
 
-### **1. Anonymous Trial (Instant Access)**
+### **1. Web Interface (Recommended for Users)**
+Experience the full platform with our user-friendly web interface:
+
+**🎨 Trial Upgrade Page**: [https://stylize-mcp-server-997481449751.us-central1.run.app/web/upgrade](https://stylize-mcp-server-997481449751.us-central1.run.app/web/upgrade)
+- Beautiful trial-to-account conversion form
+- Shows remaining trial images and upgrade benefits
+- Automatic session tracking and seamless user experience
+
+**📊 User Dashboard**: [https://stylize-mcp-server-997481449751.us-central1.run.app/web/dashboard](https://stylize-mcp-server-997481449751.us-central1.run.app/web/dashboard)
+- View credit balance, monthly usage, and subscription limits
+- Purchase additional credits with one-click buttons
+- Choose from 4 pricing tiers ($9.99 - $99.99)
+- Professional responsive design for all devices
+
+**✨ Features:**
+- 🔐 Cookie-based authentication (no API knowledge needed)
+- 📱 Mobile-responsive design
+- 💳 Instant credit purchase (simplified - no payment processing)
+- 🎯 Clear upgrade paths from trial to paid
+- 🚀 Professional SaaS-quality interface
+
+### **2. Anonymous Trial (API Access)**
 Try immediately with **no account required** - get 5 free images:
 
 ```bash
@@ -100,7 +126,7 @@ curl -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize
 }
 ```
 
-### **2. MCP Protocol (Claude Desktop)**
+### **3. MCP Protocol (Claude Desktop)**
 Use via Claude Desktop with trial support:
 
 1. Add to your `claude_desktop_config.json`:
@@ -134,7 +160,7 @@ Use via Claude Desktop with trial support:
 "Stylize this image in Van Gogh style using my trial session"
 ```
 
-### **3. Full Account (Free Tier)**
+### **4. Full Account (API Access)**
 Sign up for 100 free images per month:
 
 ```bash
@@ -262,7 +288,17 @@ uvicorn app.main:app --reload
 - `POST /trial/convert`: Convert trial session to account ✅
 - `GET /user/profile`: Get user profile ✅
 - `GET /user/usage`: Get usage stats and limits ✅
+- `GET /user/credits`: Get user credit balance ✅
+- `POST /user/purchase-credits`: Purchase credit packages ✅
+- `GET /user/dashboard`: Complete user dashboard data ✅
 - `POST /user/api-keys`: Create API key for current user ✅
+
+#### **🌐 Web Interface Endpoints**
+- `GET /web/upgrade`: Trial upgrade form page ✅
+- `POST /web/trial/upgrade`: Process trial conversion ✅
+- `GET /web/dashboard`: User dashboard with credit purchase ✅
+- `POST /web/purchase`: Process credit purchase via form ✅
+- `GET /web/logout`: User logout ✅
 
 #### **🔧 Admin Endpoints**
 - `POST /admin/api-keys`: Create API key (admin) ✅
