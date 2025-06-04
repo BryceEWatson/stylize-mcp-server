@@ -161,6 +161,101 @@ API_KEYS_SECRET_PATH=api-keys       # Secret Manager path for API keys (default:
 DEV_API_KEY=your-dev-key-here       # Development API key (only used when AUTH_DEV_BYPASS=true)
 ```
 
+### 🛡️ Trial Abuse Prevention System
+
+The server includes a comprehensive **multi-layered security system** to prevent abuse of the freemium trial while maintaining zero friction for legitimate users.
+
+#### Security Configuration
+```bash
+# Security System
+SECURITY_ENABLED=true                    # Enable comprehensive abuse prevention (default: false)
+HIGH_RISK_THRESHOLD=0.7                 # Risk score threshold for challenges (default: 0.7)
+FINGERPRINTING_ENABLED=true            # Enable device fingerprinting (default: true)
+
+# VPN & Proxy Detection
+VPN_DETECTION_PAID_APIS=true           # Enable premium VPN detection APIs (default: false)
+VPN_DETECTION_TIMEOUT=5                # VPN API timeout in seconds (default: 5)
+VPN_CACHE_DURATION=3600                # VPN result cache duration in seconds (default: 3600)
+IPQUALITYSCORE_API_KEY=your_key        # IPQualityScore API key (optional)
+PROXYCHECK_API_KEY=your_key            # ProxyCheck.io API key (optional)
+GEOIP_DATABASE_PATH=/path/to/GeoLite2  # GeoIP database path (optional)
+
+# Rate Limiting
+TRIAL_CREATION_PER_IP=5                # Max trial sessions per IP per day (default: 5)
+TRIAL_CREATION_PER_DEVICE=3            # Max trial sessions per device per day (default: 3)
+IMAGE_GENERATION_PER_SESSION=5         # Max images per trial session (default: 5)
+GLOBAL_DAILY_LIMIT=10000               # Global daily image generation limit (default: 10000)
+RATE_LIMIT_WINDOW_HOURS=24             # Rate limit window in hours (default: 24)
+
+# CAPTCHA Integration
+RECAPTCHA_SITE_KEY=your_site_key       # Google reCAPTCHA site key (optional)
+RECAPTCHA_SECRET_KEY=your_secret       # Google reCAPTCHA secret key (optional)
+HCAPTCHA_SITE_KEY=your_site_key        # hCAPTCHA site key (optional)
+HCAPTCHA_SECRET_KEY=your_secret        # hCAPTCHA secret key (optional)
+
+# Monitoring & Logging
+ABUSE_LOG_LEVEL=INFO                   # Abuse event logging level (default: INFO)
+SECURITY_METRICS_ENABLED=true         # Enable security metrics collection (default: true)
+```
+
+#### Protection Services
+
+The system includes several specialized protection services:
+
+**Device Fingerprinting Service** (`app/fingerprint_service.py`)
+- Client-side JavaScript fingerprinting with spoofing detection
+- Server-side request analysis and header fingerprinting
+- Cross-session device tracking with privacy-conscious hashing
+
+**VPN Detection Service** (`app/vpn_detection_service.py`)
+- Multi-API VPN/proxy detection with intelligent fallbacks
+- Known VPN range checking and datacenter hosting detection
+- Risk scoring based on IP reputation and geolocation analysis
+
+**Behavioral Analysis Service** (`app/behavior_analysis_service.py`)
+- Automation detection using timing patterns and request sequences
+- Mouse movement tracking and user interaction analysis
+- Progressive challenge escalation based on behavior patterns
+
+**Risk Scoring Service** (`app/risk_scoring_service.py`)
+- ML-based risk assessment combining multiple signals
+- Dynamic threshold adjustment based on threat patterns
+- Confidence scoring to minimize false positives
+
+**Rate Limiting Service** (`app/rate_limiting_service.py`)
+- Multi-dimensional rate limiting (IP, device, session, global)
+- Sliding window algorithms with burst protection
+- Risk-based limit adjustment for verified users
+
+**Abuse Monitoring Service** (`app/abuse_monitoring_service.py`)
+- Real-time abuse event logging and pattern detection
+- Automated response triggers and admin alerting
+- Security metrics dashboard and reporting
+
+#### Graceful Degradation
+
+The security system is designed for **zero-friction operation**:
+
+- **Backward compatible**: Works without any configuration changes
+- **Progressive enhancement**: Additional layers activate as services are configured
+- **Intelligent fallbacks**: Degrades gracefully when external APIs are unavailable
+- **Development friendly**: Can be completely disabled for local development
+
+#### Security Testing
+```bash
+# Test protection services individually
+python -m pytest tests/test_abuse_prevention.py -v
+
+# Test with security enabled
+SECURITY_ENABLED=true pytest tests/test_trial_service.py
+
+# Verify fingerprinting service
+curl http://localhost:8000/static/js/fingerprint.js
+
+# Check rate limiting behavior
+curl -X POST http://localhost:8000/trial/status -v
+```
+
 #### API Key Management
 API keys are stored in Google Cloud Secret Manager as JSON:
 ```json
@@ -354,13 +449,15 @@ gcloud logging read "resource.type=cloud_run_revision AND resource.labels.servic
 gcloud run services describe stylize-mcp-server --region=us-central1
 ```
 
-### ✅ System Status (Fully Operational)
+### ✅ System Status (Fully Operational + Enhanced Security)
 - **✅ Firestore Integration**: Complete user management with trial sessions and credit tracking
 - **✅ Trial System**: Anonymous users get 5 free images with seamless upgrade flow
+- **✅ Advanced Security**: Multi-layered abuse prevention with device fingerprinting, VPN detection, and behavioral analysis
 - **✅ Web Interface**: Beautiful forms for trial upgrade and credit purchase
 - **✅ Credit System**: Complete credit purchase flow with 4 pricing tiers
 - **✅ Image Generation**: Both single-style and multi-style generation working
 - **✅ Authentication**: JWT-based user auth and API key management
+- **✅ Rate Limiting**: Sophisticated multi-dimensional rate limiting with risk-based adjustment
 - **✅ GCS Integration**: All generated images publicly accessible via signed URLs
 
 ### Authentication Development Notes

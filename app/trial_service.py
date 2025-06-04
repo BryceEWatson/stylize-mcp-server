@@ -3,7 +3,10 @@
 import logging
 import os
 import uuid
+import time
 from datetime import datetime, timedelta, timezone
+from typing import Dict, Optional, Tuple, List
+from fastapi import Request
 
 from google.cloud import firestore
 
@@ -13,18 +16,23 @@ from app.models import (
     TrialSession,
     TrialToAccountRequest,
     TrialUsageResponse,
+    AbuseEvent,
+    SecurityConfig,
+    VerificationChallenge
 )
+# Protection services are imported dynamically to avoid circular imports
 
 logger = logging.getLogger(__name__)
 
 
 class TrialService:
-    """Service for managing anonymous trial sessions and credit-based billing."""
+    """Service for managing anonymous trial sessions with abuse prevention."""
 
-    def __init__(self):
+    def __init__(self, security_config: Optional[SecurityConfig] = None):
         """Initialize the trial service."""
         self.project_id = os.environ.get("GCP_PROJECT_ID")
         self.firestore_client = None
+        self.security_config = security_config or SecurityConfig()
 
         # Trial configuration
         self.trial_images_limit = 5  # Anonymous users get 5 free images
@@ -37,6 +45,15 @@ class TrialService:
                 logger.info("Firestore client initialized for trial management")
             except Exception as e:
                 logger.warning(f"Failed to initialize Firestore client: {str(e)}")
+
+        # Protection services will be initialized lazily when needed
+        self._protection_enabled = os.getenv('SECURITY_ENABLED', 'false').lower() == 'true'
+        self._vpn_service = None
+        self._behavior_service = None
+        self._captcha_service = None
+        self._risk_service = None
+        self._rate_service = None
+        self._monitoring_service = None
 
         # Define credit packages
         self.credit_packages = {
@@ -79,16 +96,99 @@ class TrialService:
         # Use IP + timestamp for uniqueness
         base_string = f"{ip_address}-{datetime.now(timezone.utc).isoformat()}"
         return f"trial-{uuid.uuid5(uuid.NAMESPACE_DNS, base_string).hex[:12]}"
+    
+    def _get_protection_services(self):
+        """Lazy initialization of protection services."""
+        if not self._protection_enabled:
+            return None, None, None, None, None, None
+            
+        try:
+            if self._vpn_service is None:
+                from app.vpn_detection_service import get_vpn_detection_service
+                self._vpn_service = get_vpn_detection_service()
+            
+            if self._behavior_service is None:
+                from app.behavior_analysis_service import get_behavior_analysis_service
+                self._behavior_service = get_behavior_analysis_service()
+            
+            if self._captcha_service is None:
+                from app.captcha_service import get_captcha_service
+                self._captcha_service = get_captcha_service()
+            
+            if self._risk_service is None:
+                from app.risk_scoring_service import get_risk_scoring_service
+                self._risk_service = get_risk_scoring_service(self.security_config)
+            
+            if self._rate_service is None:
+                from app.rate_limiting_service import get_rate_limiting_service
+                self._rate_service = get_rate_limiting_service(self.security_config)
+            
+            if self._monitoring_service is None:
+                from app.abuse_monitoring_service import get_abuse_monitoring_service
+                self._monitoring_service = get_abuse_monitoring_service(self.security_config)
+            
+            return (self._vpn_service, self._behavior_service, self._captcha_service,
+                   self._risk_service, self._rate_service, self._monitoring_service)
+        except ImportError as e:
+            logger.warning(f"Protection services not available: {e}")
+            return None, None, None, None, None, None
 
     async def get_or_create_trial_session(
         self,
         ip_address: str,
-        user_agent: str | None = None
+        user_agent: str | None = None,
+        request: Optional[Request] = None,
+        client_fingerprint_data: Optional[Dict] = None
     ) -> TrialSession:
         """Get existing trial session or create a new one."""
         try:
+            # Get protection services if enabled
+            (vpn_service, behavior_service, captcha_service, 
+             risk_service, rate_service, monitoring_service) = self._get_protection_services()
+            
+            # Use protection if available and request is provided
+            if self._protection_enabled and request and rate_service:
+                try:
+                    from app.fingerprint_service import extract_fingerprint_from_request
+                    
+                    # Extract request info
+                    ip_address = self._get_client_ip(request)
+                    user_agent = request.headers.get("user-agent", "")
+                    
+                    # Generate device fingerprint
+                    fingerprint = extract_fingerprint_from_request(request, client_fingerprint_data)
+                    
+                    # Check rate limits for trial creation
+                    from app.rate_limiting_service import RateLimitType
+                    rate_results = await rate_service.check_trial_creation_limits(
+                        ip_address, fingerprint.device_fingerprint, 0.0
+                    )
+                    
+                    # Check if any rate limits are exceeded
+                    for limit_name, result in rate_results.items():
+                        if not result.allowed:
+                            if monitoring_service:
+                                await self._log_abuse_event("rate_limit_exceeded", ip_address, user_agent, {
+                                    'limit_type': limit_name,
+                                    'current_usage': result.current_usage,
+                                    'limit': result.limit
+                                }, monitoring_service)
+                            raise Exception(f"Rate limit exceeded: {limit_name}")
+                    
+                    # Look for existing sessions
+                    existing_session = await self._find_existing_session_protected(ip_address, fingerprint)
+                    if existing_session:
+                        return existing_session
+                    
+                    # Create new protected session
+                    return await self._create_protected_trial_session(request, fingerprint, 
+                                                                    vpn_service, risk_service, monitoring_service)
+                except ImportError:
+                    logger.warning("Protection services not available, falling back to basic mode")
+            
+            # Fallback to basic mode without protection
             if not self.firestore_client:
-                # Fallback to in-memory session for development
+                # Development fallback
                 session_id = self.create_session_id(ip_address, user_agent)
                 return TrialSession(
                     session_id=session_id,
@@ -96,7 +196,8 @@ class TrialService:
                     user_agent=user_agent,
                     images_used=0,
                     max_images=self.trial_images_limit,
-                    created_at=datetime.now(timezone.utc).isoformat()
+                    created_at=datetime.now(timezone.utc).isoformat(),
+                    creation_timestamp=time.time()
                 )
 
             # Look for existing active trial session for this IP
@@ -130,7 +231,8 @@ class TrialService:
                 user_agent=user_agent,
                 images_used=0,
                 max_images=self.trial_images_limit,
-                created_at=datetime.now(timezone.utc).isoformat()
+                created_at=datetime.now(timezone.utc).isoformat(),
+                creation_timestamp=time.time()
             )
 
     async def _create_new_trial_session(self, ip_address: str, user_agent: str | None = None) -> TrialSession:
@@ -143,7 +245,8 @@ class TrialService:
             user_agent=user_agent,
             images_used=0,
             max_images=self.trial_images_limit,
-            created_at=datetime.now(timezone.utc).isoformat()
+            created_at=datetime.now(timezone.utc).isoformat(),
+            creation_timestamp=time.time()
         )
 
         if self.firestore_client:
@@ -153,6 +256,92 @@ class TrialService:
 
         logger.info(f"Created new trial session: {session_id}")
         return trial_session
+    
+    def _get_client_ip(self, request: Request) -> str:
+        """Extract real client IP address."""
+        # Check forwarded headers (common in Cloud Run)
+        forwarded_for = request.headers.get("x-forwarded-for")
+        if forwarded_for:
+            return forwarded_for.split(",")[0].strip()
+        
+        real_ip = request.headers.get("x-real-ip")
+        if real_ip:
+            return real_ip.strip()
+        
+        return getattr(request.client, "host", "unknown")
+    
+    async def _log_abuse_event(self, event_type: str, ip_address: str, 
+                             user_agent: str, details: Dict, monitoring_service):
+        """Log an abuse event for monitoring."""
+        try:
+            from app.models import AbuseEvent
+            event = AbuseEvent(
+                event_id=str(uuid.uuid4()),
+                event_type=event_type,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                details=details
+            )
+            
+            await monitoring_service.log_abuse_event(event)
+            
+        except Exception as e:
+            logger.error(f"Error logging abuse event: {e}")
+    
+    async def _find_existing_session_protected(self, ip_address: str, fingerprint) -> Optional[TrialSession]:
+        """Find existing session using protection criteria."""
+        try:
+            trials_ref = self.firestore_client.collection('trial_sessions')
+            
+            # Try to find by device fingerprint first
+            if hasattr(fingerprint, 'device_fingerprint') and fingerprint.device_fingerprint:
+                fingerprint_query = trials_ref.where(
+                    'device_fingerprint', '==', fingerprint.device_fingerprint
+                ).where('is_expired', '==', False).limit(1).get()
+                
+                if fingerprint_query:
+                    trial_data = fingerprint_query[0].to_dict()
+                    if self._is_session_valid(trial_data):
+                        return TrialSession(**trial_data)
+            
+            # Fallback to IP lookup
+            return None
+        except Exception as e:
+            logger.error(f"Error finding protected session: {e}")
+            return None
+    
+    def _is_session_valid(self, trial_data: Dict) -> bool:
+        """Check if session is still valid."""
+        try:
+            created_at = datetime.fromisoformat(trial_data['created_at'].replace('Z', '+00:00'))
+            return datetime.now(timezone.utc) - created_at <= timedelta(hours=self.trial_duration_hours)
+        except:
+            return False
+    
+    async def _create_protected_trial_session(self, request: Request, fingerprint, 
+                                            vpn_service, risk_service, monitoring_service) -> TrialSession:
+        """Create a new trial session with protection."""
+        ip_address = self._get_client_ip(request)
+        user_agent = request.headers.get("user-agent", "")
+        
+        # Create basic session first
+        session = await self._create_new_trial_session(ip_address, user_agent)
+        
+        # Add protection data if available
+        if hasattr(fingerprint, 'device_fingerprint'):
+            session.device_fingerprint = fingerprint.device_fingerprint
+            session.client_fingerprint = getattr(fingerprint, 'client_fingerprint', None)
+        
+        session.creation_timestamp = time.time()
+        
+        # Update in Firestore if available
+        if self.firestore_client:
+            trials_ref = self.firestore_client.collection('trial_sessions')
+            trials_ref.document(session.session_id).set(session.dict())
+        
+        return session
+
 
     async def check_trial_usage(self, session_id: str, requested_count: int = 1) -> tuple[bool, TrialUsageResponse]:
         """Check if trial session can be used for another image(s).

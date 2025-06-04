@@ -234,16 +234,40 @@ class AuthTokenResponse(BaseModel):
 # Anonymous Trial System Models
 
 class TrialSession(BaseModel):
-    """Model for anonymous trial sessions."""
+    """Model for anonymous trial sessions with abuse prevention."""
     session_id: str = Field(..., description="Unique session identifier")
     ip_address: str = Field(..., description="User's IP address")
     user_agent: str | None = Field(None, description="User agent string")
+    
+    # Fingerprinting fields
+    device_fingerprint: str | None = Field(None, description="Server-side device fingerprint")
+    client_fingerprint: str | None = Field(None, description="Client-side fingerprint hash")
+    canvas_fingerprint: str | None = Field(None, description="Canvas fingerprint (first 32 chars)")
+    webgl_fingerprint: str | None = Field(None, description="WebGL fingerprint (first 32 chars)")
+    screen_resolution: str | None = Field(None, description="Screen resolution")
+    timezone_offset: int | None = Field(None, description="Timezone offset in minutes")
+    
+    # Usage tracking
     images_used: int = Field(0, description="Number of images generated in this session")
     max_images: int = Field(5, description="Maximum images allowed for trial")
     created_at: str = Field(..., description="Session creation timestamp")
     last_used_at: str | None = Field(None, description="Last usage timestamp")
     is_expired: bool = Field(False, description="Whether the trial has expired")
     converted_to_user_id: str | None = Field(None, description="User ID if converted to account")
+    
+    # Abuse prevention fields
+    risk_score: float = Field(0.0, description="Calculated risk score (0.0-1.0)")
+    is_flagged: bool = Field(False, description="Whether session is flagged as suspicious")
+    flagged_reasons: list[str] = Field(default_factory=list, description="Reasons for flagging")
+    verification_challenges_passed: int = Field(0, description="Number of CAPTCHA/challenges passed")
+    request_timestamps: list[float] = Field(default_factory=list, description="Request timing history")
+    creation_timestamp: float = Field(..., description="Unix timestamp of session creation")
+    
+    # VPN/Proxy detection
+    is_vpn_detected: bool = Field(False, description="Whether VPN/proxy was detected")
+    vpn_confidence: float = Field(0.0, description="VPN detection confidence (0.0-1.0)")
+    ip_reputation_score: float = Field(0.0, description="IP reputation score (0.0-1.0, higher = worse)")
+    geolocation_data: dict | None = Field(None, description="IP geolocation information")
 
 
 class TrialUsageResponse(BaseModel):
@@ -297,3 +321,95 @@ class MCPTrialResponse(BaseModel):
     image_url: str | None = Field(None, description="Generated image URL if successful")
     trial_info: TrialUsageResponse = Field(..., description="Trial usage information")
     upgrade_options: list[CreditPackage] | None = Field(None, description="Available upgrade options")
+
+
+# Abuse Prevention Models
+
+class IPRiskAssessment(BaseModel):
+    """Model for IP risk assessment results."""
+    ip_address: str = Field(..., description="IP address assessed")
+    is_vpn: bool = Field(False, description="Whether IP is identified as VPN")
+    is_proxy: bool = Field(False, description="Whether IP is identified as proxy")
+    is_tor: bool = Field(False, description="Whether IP is Tor exit node")
+    is_datacenter: bool = Field(False, description="Whether IP is from datacenter")
+    risk_score: float = Field(0.0, description="Overall risk score (0.0-1.0)")
+    confidence: float = Field(0.0, description="Confidence in assessment (0.0-1.0)")
+    country_code: str | None = Field(None, description="Country code if available")
+    asn: str | None = Field(None, description="Autonomous System Number")
+    isp: str | None = Field(None, description="Internet Service Provider")
+
+
+class RateLimitResult(BaseModel):
+    """Model for rate limiting results."""
+    allowed: bool = Field(..., description="Whether the request is allowed")
+    current_usage: int = Field(0, description="Current usage count")
+    limit: int = Field(0, description="Rate limit threshold")
+    retry_after: int | None = Field(None, description="Seconds to wait before retrying")
+    window_seconds: int = Field(0, description="Rate limit window in seconds")
+
+
+class VerificationChallenge(str, Enum):
+    """Types of verification challenges."""
+    NONE = "none"
+    SIMPLE_MATH = "simple_math"
+    RECAPTCHA_V2 = "recaptcha_v2"
+    RECAPTCHA_V3 = "recaptcha_v3"
+    HCAPTCHA = "hcaptcha"
+    EMAIL_VERIFICATION = "email_verification"
+
+
+class BehaviorAnalysis(BaseModel):
+    """Model for behavioral analysis results."""
+    session_id: str = Field(..., description="Session identifier")
+    timing_regularity_score: float = Field(0.0, description="Score for timing pattern regularity")
+    rapid_consumption_score: float = Field(0.0, description="Score for rapid usage patterns")
+    interaction_naturalness_score: float = Field(0.0, description="Score for natural interaction patterns")
+    overall_bot_probability: float = Field(0.0, description="Overall probability of bot behavior")
+    analyzed_requests: int = Field(0, description="Number of requests analyzed")
+
+
+class AbuseEvent(BaseModel):
+    """Model for logging abuse events."""
+    event_id: str = Field(..., description="Unique event identifier")
+    event_type: str = Field(..., description="Type of abuse event")
+    session_id: str | None = Field(None, description="Related session ID")
+    ip_address: str = Field(..., description="IP address involved")
+    user_agent: str | None = Field(None, description="User agent string")
+    timestamp: str = Field(..., description="Event timestamp")
+    details: dict = Field(default_factory=dict, description="Additional event details")
+    action_taken: str | None = Field(None, description="Action taken in response")
+    severity: str = Field("medium", description="Event severity (low/medium/high)")
+
+
+class FingerprintValidationRequest(BaseModel):
+    """Request model for fingerprint validation."""
+    client_fingerprint_data: dict = Field(..., description="Client-side fingerprint data")
+    session_id: str | None = Field(None, description="Existing session ID if any")
+
+
+class SecurityConfig(BaseModel):
+    """Configuration model for security settings."""
+    fingerprinting_enabled: bool = Field(True, description="Enable device fingerprinting")
+    vpn_detection_enabled: bool = Field(True, description="Enable VPN/proxy detection")
+    behavior_analysis_enabled: bool = Field(True, description="Enable behavioral analysis")
+    captcha_enabled: bool = Field(True, description="Enable CAPTCHA challenges")
+    rate_limiting_enabled: bool = Field(True, description="Enable rate limiting")
+    abuse_monitoring_enabled: bool = Field(True, description="Enable abuse monitoring")
+    
+    # Thresholds
+    high_risk_threshold: float = Field(0.7, description="Threshold for high-risk classification")
+    captcha_threshold: float = Field(0.5, description="Risk score threshold for CAPTCHA")
+    block_threshold: float = Field(0.9, description="Risk score threshold for blocking")
+    
+    # Rate limits
+    trial_creation_per_ip_per_hour: int = Field(3, description="Trial sessions per IP per hour")
+    trial_creation_per_fingerprint_per_hour: int = Field(1, description="Trial sessions per fingerprint per hour")
+    image_generation_per_minute: int = Field(2, description="Image generations per minute")
+    
+    # VPN detection settings
+    vpn_api_timeout_seconds: int = Field(5, description="VPN API timeout")
+    vpn_cache_duration_seconds: int = Field(3600, description="VPN detection cache duration")
+    
+    # Fingerprint settings
+    fingerprint_uniqueness_threshold: float = Field(0.8, description="Threshold for fingerprint uniqueness")
+    fingerprint_spoofing_threshold: float = Field(0.6, description="Threshold for fingerprint spoofing detection")

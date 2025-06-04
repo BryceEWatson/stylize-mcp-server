@@ -50,6 +50,7 @@ curl -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize
 ✅ **Complete Web Interface** - Trial upgrade forms and user dashboard  
 ✅ **Credit Purchase System** - One-click credit purchasing with 4 pricing tiers  
 ✅ **Freemium Trial System** - 5 free images, no signup required  
+✅ **Advanced Trial Abuse Prevention** - Multi-layered security system to prevent trial exploitation  
 ✅ **User Registration & Authentication** - Self-service account creation  
 ✅ **Subscription Tiers** - Free (100/mo), Pro (1K/mo), Enterprise (10K/mo)  
 ✅ **Credit System** - Pay-as-you-go pricing ($9.99-$99.99 packages)  
@@ -197,6 +198,98 @@ curl -H "Authorization: Bearer JWT_TOKEN" \
   -d '{"name": "My Integration"}'
 ```
 
+## 🛡️ Trial Abuse Prevention System
+
+The Stylize MCP Server includes a sophisticated **multi-layered abuse prevention system** to ensure fair trial usage while maintaining a seamless user experience. This system operates transparently, requiring no additional user interaction.
+
+### Security Features
+
+#### **🔍 Device Fingerprinting**
+- **Client-side fingerprinting** using canvas, WebGL, screen resolution, and font detection
+- **Server-side analysis** of headers, IP geolocation, and connection patterns
+- **Spoofing detection** with entropy analysis and consistency checks
+- **Cross-session tracking** to prevent multiple trial abuse
+
+#### **🌐 VPN & Proxy Detection**
+- **Multi-API integration** with IPQualityScore and ProxyCheck.io for real-time VPN detection
+- **Datacenter hosting detection** using ASN analysis and GeoIP database
+- **Known VPN range checking** against curated IP range databases
+- **Risk scoring** based on connection source and patterns
+
+#### **🤖 Behavioral Analysis**
+- **Automation detection** using timing patterns, request sequences, and user agent analysis
+- **Mouse movement tracking** to distinguish human vs. bot interactions
+- **Request pattern analysis** for detecting scripted behavior
+- **Progressive challenge system** based on risk assessment
+
+#### **⚡ Advanced Rate Limiting**
+- **Multi-dimensional limits**: Per-IP, per-device, per-session, and global rate controls
+- **Sliding window algorithms** for precise usage tracking
+- **Risk-based throttling** with higher limits for low-risk users
+- **Burst protection** to prevent rapid trial exhaustion
+
+#### **📊 Real-time Risk Scoring**
+- **ML-based assessment** combining device, location, and behavioral signals
+- **Dynamic threshold adjustment** based on threat patterns
+- **Confidence scoring** to minimize false positives
+- **Adaptive security** that learns from abuse patterns
+
+#### **🚨 Abuse Monitoring & Alerting**
+- **Real-time event logging** with structured abuse event tracking
+- **Pattern detection** for identifying coordinated abuse attempts
+- **Automatic response** including temporary restrictions and challenges
+- **Admin dashboards** for monitoring security metrics
+
+### Configuration
+
+The security system is **configurable via environment variables**:
+
+```bash
+# Security System
+SECURITY_ENABLED=true                    # Enable abuse prevention (default: false)
+HIGH_RISK_THRESHOLD=0.7                 # Risk score threshold for challenges (default: 0.7)
+FINGERPRINTING_ENABLED=true            # Enable device fingerprinting (default: true)
+
+# VPN Detection
+VPN_DETECTION_PAID_APIS=true           # Enable premium VPN detection APIs (default: false)
+IPQUALITYSCORE_API_KEY=your_key        # IPQualityScore API key (optional)
+PROXYCHECK_API_KEY=your_key            # ProxyCheck.io API key (optional)
+
+# Rate Limiting
+TRIAL_CREATION_PER_IP=5                # Max trials per IP per day (default: 5)
+TRIAL_CREATION_PER_DEVICE=3            # Max trials per device per day (default: 3)
+IMAGE_GENERATION_PER_SESSION=5         # Max images per session (default: 5)
+GLOBAL_DAILY_LIMIT=10000               # Global daily image limit (default: 10000)
+
+# CAPTCHA Challenges
+RECAPTCHA_SITE_KEY=your_site_key       # reCAPTCHA site key (optional)
+RECAPTCHA_SECRET_KEY=your_secret       # reCAPTCHA secret key (optional)
+HCAPTCHA_SITE_KEY=your_site_key        # hCAPTCHA site key (optional)
+HCAPTCHA_SECRET_KEY=your_secret        # hCAPTCHA secret key (optional)
+```
+
+### Graceful Degradation
+
+The system is designed for **backward compatibility** and **graceful degradation**:
+
+- **Works without configuration**: Falls back to basic IP-based tracking
+- **Optional API integrations**: VPN detection works with free tier, premium APIs enhance accuracy
+- **Progressive enhancement**: Additional security layers activate as services are configured
+- **Zero user friction**: Security operates transparently without impacting legitimate users
+
+### Privacy & Compliance
+
+- **Minimal data collection**: Only technical metadata required for abuse prevention
+- **No personal information**: Device fingerprints are cryptographic hashes, not personal data
+- **GDPR compliance**: Anonymous technical identifiers with automatic expiration
+- **Transparency**: Security measures are documented and user-visible when triggered
+
+### Detailed Security Documentation
+
+For comprehensive security configuration, deployment guides, and troubleshooting:
+
+📚 **[Security Configuration Guide](docs/SECURITY_CONFIGURATION.md)** - Complete reference for configuring and deploying the abuse prevention system
+
 ## Local Development Setup
 
 ### Prerequisites
@@ -228,6 +321,7 @@ pip install -r requirements.txt
 # Set up environment variables
 # Required: GCP_PROJECT_ID, OPENAI_API_KEY_SECRET_PATH
 # Authentication: AUTH_ENABLED, API_KEYS_SECRET_PATH, DEV_API_KEY
+# Security: SECURITY_ENABLED, HIGH_RISK_THRESHOLD, VPN detection keys
 # Optional: REDIS_HOST, REDIS_PORT for caching
 ```
 
@@ -236,12 +330,38 @@ pip install -r requirements.txt
 The Stylize MCP Server now includes **API key authentication** for all endpoints:
 
 #### Environment Variables
+
+**Core Settings:**
 ```bash
 # Authentication settings
 AUTH_ENABLED=true                    # Enable/disable authentication (default: true)
 AUTH_DEV_BYPASS=false               # Allow bypassing auth in development (default: false)
 API_KEYS_SECRET_PATH=api-keys       # Secret Manager path for API keys (default: api-keys)
 DEV_API_KEY=your-dev-key-here       # Development API key (only used when AUTH_DEV_BYPASS=true)
+
+# Security & Abuse Prevention
+SECURITY_ENABLED=true               # Enable comprehensive trial abuse prevention (default: false)
+HIGH_RISK_THRESHOLD=0.7             # Risk score threshold for challenges (default: 0.7)
+FINGERPRINTING_ENABLED=true        # Enable device fingerprinting (default: true)
+```
+
+**Optional Security Enhancements:**
+```bash
+# VPN & Proxy Detection
+VPN_DETECTION_PAID_APIS=true       # Enable premium VPN detection APIs (default: false)
+IPQUALITYSCORE_API_KEY=your_key    # IPQualityScore API key (optional)
+PROXYCHECK_API_KEY=your_key        # ProxyCheck.io API key (optional)
+
+# Rate Limiting
+TRIAL_CREATION_PER_IP=5            # Max trial sessions per IP per day (default: 5)
+TRIAL_CREATION_PER_DEVICE=3        # Max trial sessions per device per day (default: 3)
+GLOBAL_DAILY_LIMIT=10000           # Global daily image generation limit (default: 10000)
+
+# CAPTCHA Integration
+RECAPTCHA_SITE_KEY=your_site_key   # Google reCAPTCHA site key (optional)
+RECAPTCHA_SECRET_KEY=your_secret   # Google reCAPTCHA secret key (optional)
+HCAPTCHA_SITE_KEY=your_site_key    # hCAPTCHA site key (optional)
+HCAPTCHA_SECRET_KEY=your_secret    # hCAPTCHA secret key (optional)
 ```
 
 #### Development Setup
@@ -323,6 +443,18 @@ uvicorn app.main:app --reload
 - `GET /admin/api-keys`: List all API keys ✅
 - `PATCH /admin/api-keys/{key_id}`: Update API key ✅
 - `DELETE /admin/api-keys/{key_id}`: Deactivate API key ✅
+
+#### **🛡️ Security & Monitoring Endpoints**
+- `GET /admin/security/metrics`: Security metrics and abuse statistics (admin) ✅
+- `POST /admin/security/report-abuse`: Report manual abuse event (admin) ✅
+- `POST /security/challenge`: Force CAPTCHA challenge for session ✅
+- `GET /static/js/fingerprint.js`: Client-side device fingerprinting library ✅
+
+**Security Headers Added to Responses:**
+- `X-Security-Risk-Score`: Current request risk assessment (0.0-1.0)
+- `X-Rate-Limit-Remaining`: Remaining requests in current window
+- `X-Device-Fingerprint`: Device fingerprinting status
+- `X-VPN-Detection`: VPN/proxy detection result
 
 #### **📊 Public Endpoints**
 - `GET /styles`: List available styles ✅

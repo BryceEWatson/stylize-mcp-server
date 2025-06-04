@@ -64,7 +64,19 @@ def mock_trial_service():
 
     # Create async mock for convert_trial_to_account
     async def mock_convert_trial_to_account(*args, **kwargs):
-        return (True, "Trial converted successfully", "test_jwt_token")
+        from app.models import UserProfile
+        mock_user = UserProfile(
+            user_id="test_user_123",
+            email="test@example.com",
+            first_name="Test",
+            last_name="User",
+            subscription_tier="free",
+            created_at=datetime.now(timezone.utc).isoformat()
+        )
+        return (True, "Trial converted successfully", {
+            "access_token": "test_jwt_token",
+            "user_profile": mock_user
+        })
 
     mock_service.get_or_create_trial_session = AsyncMock(side_effect=mock_get_or_create_trial_session)
     mock_service.check_trial_usage = AsyncMock(side_effect=mock_check_trial_usage)
