@@ -27,6 +27,13 @@ The Stylize MCP Server is a **fully operational** cloud-based service that trans
 - **MCP Integration**: Ready for Claude Desktop and other MCP clients
 
 **🎯 Try It Now (No Account Needed!):**
+
+🌟 **Interactive Demo**: [https://stylize-mcp-server-997481449751.us-central1.run.app/web/demo](https://stylize-mcp-server-997481449751.us-central1.run.app/web/demo)
+- **Drag & drop image upload** or **text-to-image generation**
+- **Real-time credit tracking** with 5 free images
+- **Try all 6 artistic styles** including "Surprise Me" for 4 random styles
+- **Learn MCP integration** with step-by-step Claude Desktop setup
+
 ```bash
 # Single style:
 curl -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize_image \
@@ -57,9 +64,19 @@ curl -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize
 ✅ **Infrastructure as code** deployed on Google Cloud Platform  
 ✅ **Comprehensive testing suite** and documentation
 
-## 🚀 Getting Started (4 Ways to Use)
+## 🚀 Getting Started (5 Ways to Use)
 
-### **1. Web Interface (Recommended for Users)**
+### **1. Interactive Demo (Recommended for First-Time Users)**
+Try the service instantly with no account required:
+
+**🌟 Demo Page**: [https://stylize-mcp-server-997481449751.us-central1.run.app/web/demo](https://stylize-mcp-server-997481449751.us-central1.run.app/web/demo)
+- **🎨 Real-time image stylization** - Upload images or enter text prompts
+- **🎲 "Surprise Me" feature** - Generate 4 random artistic styles at once
+- **📊 Live credit tracking** - See your 5 free images update in real-time
+- **🤖 MCP integration guide** - Step-by-step Claude Desktop setup instructions
+- **📱 Mobile-friendly interface** - Works perfectly on phones and tablets
+
+### **2. Web Interface (For Account Management)**
 Experience the full platform with our user-friendly web interface:
 
 **🎨 Trial Upgrade Page**: [https://stylize-mcp-server-997481449751.us-central1.run.app/web/upgrade](https://stylize-mcp-server-997481449751.us-central1.run.app/web/upgrade)
@@ -80,7 +97,7 @@ Experience the full platform with our user-friendly web interface:
 - 🎯 Clear upgrade paths from trial to paid
 - 🚀 Professional SaaS-quality interface
 
-### **2. Anonymous Trial (API Access)**
+### **3. Anonymous Trial (API Access)**
 Try immediately with **no account required** - get 5 free images:
 
 ```bash
@@ -126,7 +143,7 @@ curl -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize
 }
 ```
 
-### **3. MCP Protocol (Claude Desktop)**
+### **4. MCP Protocol (Claude Desktop)**
 Use via Claude Desktop with trial support:
 
 1. Add to your `claude_desktop_config.json`:
@@ -160,7 +177,7 @@ Use via Claude Desktop with trial support:
 "Stylize this image in Van Gogh style using my trial session"
 ```
 
-### **4. Full Account (API Access)**
+### **5. Full Account (API Access)**
 Sign up for 100 free images per month:
 
 ```bash
@@ -294,6 +311,7 @@ uvicorn app.main:app --reload
 - `POST /user/api-keys`: Create API key for current user ✅
 
 #### **🌐 Web Interface Endpoints**
+- `GET /web/demo`: Interactive demo page with trial credits ✅
 - `GET /web/upgrade`: Trial upgrade form page ✅
 - `POST /web/trial/upgrade`: Process trial conversion ✅
 - `GET /web/dashboard`: User dashboard with credit purchase ✅
@@ -483,23 +501,36 @@ export DEV_API_KEY=your-dev-key-here
 # Now the dev key has admin permissions
 ```
 
-## MCP Server Integration
+## MCP Server Integration 🤖
 
-The Stylize MCP Server provides Model Context Protocol (MCP) integration for AI agents and tools. The MCP server is built using FastMCP and exposes tools for image stylization.
+The Stylize MCP Server is designed to **enhance AI assistants** with professional image generation capabilities through natural conversation. Rather than exposing technical APIs, it enables AI assistants like Claude to seamlessly integrate image creation into conversational workflows.
+
+### 🎯 AI Assistant Experience
+
+**For Users Talking to AI Assistants:**
+- **Natural Requests**: "Make this photo look like a Van Gogh painting"
+- **Style Exploration**: "Show me this image in different artistic styles"  
+- **Creative Guidance**: "Create a logo for my coffee shop"
+- **Seamless Trials**: Start with 5 free images, no account needed
+- **Progressive Enhancement**: AI guides from trial → free account → paid credits
+
+**For AI Assistants:**
+- **Intelligent Tool Selection**: Automatically choose single vs multi-style generation
+- **Trial Management**: Handle usage limits gracefully with upgrade suggestions
+- **Error Recovery**: Convert technical errors into helpful user guidance
+- **Context Awareness**: Incorporate brand guidelines and project context
 
 ### MCP Installation and Setup
 
-To use the Stylize MCP Server in your MCP-compatible client (like Claude Desktop), add the following configuration:
+#### For Claude Desktop (Recommended)
 
-#### For Claude Desktop
-
-1. Create or update your `claude_desktop_config.json` file:
+1. **Add to your `claude_desktop_config.json`:**
 
 ```json
 {
   "mcpServers": {
-    "stylize-mcp-server": {
-      "command": "node",
+    "stylize-server": {
+      "command": "node", 
       "args": [],
       "transport": {
         "type": "sse",
@@ -510,18 +541,34 @@ To use the Stylize MCP Server in your MCP-compatible client (like Claude Desktop
 }
 ```
 
-2. Restart Claude Desktop to load the new MCP server configuration.
+2. **Restart Claude Desktop** to load the new MCP server
 
-#### For Local Development
+3. **Start Conversing!** Claude will automatically discover and use the tools:
 
-When running the server locally (default port 8000), use:
+**Example Conversation:**
+```
+User: "Can you help me create some artistic versions of this photo?"
 
+Claude: "I'd be happy to help! Let me start a trial session and create some artistic interpretations of your photo."
+
+[Claude calls start_trial_session() and stylize_image() with multiple styles]
+
+Claude: "I've created 4 different artistic styles for your photo:
+• Van Gogh: Bold, swirling brush strokes with vibrant colors
+• Pixel Art: Retro 8-bit gaming aesthetic  
+• Flat UI: Clean, modern minimalist design
+• Neumorphic: Soft, dimensional interface style
+
+Which style appeals to you most? You have 1 more trial image remaining, or I can help you sign up for 100 free images per month!"
+```
+
+#### For Other MCP Clients
+
+**Local Development:**
 ```json
 {
   "mcpServers": {
-    "stylize-mcp-server-local": {
-      "command": "node",
-      "args": [],
+    "stylize-server-local": {
       "transport": {
         "type": "sse",
         "url": "http://localhost:8000/mcp/sse"
@@ -531,57 +578,122 @@ When running the server locally (default port 8000), use:
 }
 ```
 
-### Available MCP Tools
+**Custom Integration:**
+```python
+import mcp_client
 
-The MCP server provides the following **fully functional** tools for AI agents:
+# Connect to the MCP server
+client = mcp_client.connect("https://stylize-mcp-server-997481449751.us-central1.run.app/mcp")
 
-#### **🆓 Trial Tools (No Authentication Required)**
+# AI assistants can now use the tools naturally
+trial = await client.call_tool("start_trial_session", {})
+result = await client.call_tool("stylize_image", {
+    "image_base64": user_uploaded_image,
+    "session_id": trial["session_id"]
+    # Omitting style_id generates 4 random styles
+})
+```
 
-- **`start_trial_session`**: Start anonymous trial session
-  - Parameters: None
-  - Returns: Session ID, 5 free images, upgrade options, instructions
-  - **Authentication**: None required
-  - **Status**: ✅ Working - instant trial access
+### 🛠️ AI Assistant Tools
 
-- **`check_trial_status`**: Check trial usage
-  - Parameters: `session_id`
-  - Returns: Images used/remaining, trial status, upgrade options
-  - **Authentication**: None required
-  - **Status**: ✅ Working - real-time usage tracking
+The MCP server provides tools that AI assistants use **behind the scenes** to help users with image creation. Users never see these technical details - they just have natural conversations!
 
-#### **🎨 Image Generation Tools**
+#### **🚀 Trial Session Management**
 
-- **`stylize_image`**: Transform an uploaded image with a specific style OR generate 4 random styles
-  - Parameters: `image_base64`, `style_id` (optional - omit for 4 random styles), **either** `api_key` **or** `session_id`, optional `user_prompt`, optional `project_context`
-  - Returns: 
-    - **Single style** (when style_id provided): Stylized image URL, applied style, prompt used
-    - **Multiple styles** (when style_id omitted): Array of 4 images with different random styles
-    - **Trial info** (if using trial): Usage tracking and upgrade options
-  - **Authentication**: API key with `mcp` permission **OR** trial session ID
-  - **Status**: ✅ Working - supports both authenticated and trial usage, single and multi-style generation
+**`start_trial_session`** - Begin anonymous trial
+- **AI Assistant Use**: "Let me start a free trial for you to explore image generation"
+- **User Experience**: Instant access to 5 free images without signup
+- **Returns**: Session ID for tracking, available images, upgrade information
+- **Status**: ✅ Working - zero-friction trial start
 
-- **`generate_image_from_text`**: Generate an image from text description with specific style OR 4 random styles
-  - Parameters: `prompt`, `style_id` (optional - omit for 4 random styles), **either** `api_key` **or** `session_id`, optional `project_context`
-  - Returns:
-    - **Single style** (when style_id provided): Generated image URL, applied style, prompt used
-    - **Multiple styles** (when style_id omitted): Array of 4 images with different random styles
-    - **Trial info** (if using trial): Usage tracking and upgrade options
-  - **Authentication**: API key with `mcp` permission **OR** trial session ID
-  - **Status**: ✅ Working - supports both authenticated and trial usage, single and multi-style generation
+**`check_trial_status`** - Monitor trial usage  
+- **AI Assistant Use**: Proactively check remaining images before generation
+- **User Experience**: "You have 2 trial images remaining" with upgrade suggestions
+- **Returns**: Real-time usage tracking and conversion opportunities
+- **Status**: ✅ Working - intelligent usage guidance
 
-#### **📋 Information Tools**
+#### **🎨 Intelligent Image Generation**
 
-- **`list_styles`**: Get all available style options
-  - Parameters: `api_key` (required for authenticated access)
-  - Returns: List of 5 curated styles with id, name, and description
-  - **Authentication**: Requires valid API key with `mcp` permission
-  - **Status**: ✅ Working - returns complete style catalog
+**`stylize_image`** - Transform uploaded images
+- **AI Assistant Use**: 
+  - **Single Style**: "I'll apply Van Gogh's style to your photo"
+  - **Multi-Style**: "Let me show you 4 different artistic interpretations"
+- **User Experience**: Upload image → Get styled results with conversational explanation
+- **Smart Behavior**: Omit `style_id` for automatic 4-style exploration
+- **Authentication**: Works with trial sessions OR API keys
+- **Status**: ✅ Working - seamless image transformation
 
-- **`get_style_details`**: Get detailed information about a specific style
-  - Parameters: `style_id`, `api_key`
-  - Returns: Complete style information including prompt fragments
-  - **Authentication**: Requires valid API key with `mcp` permission
-  - **Status**: ✅ Working - provides detailed style information
+**`generate_image_from_text`** - Create images from descriptions
+- **AI Assistant Use**:
+  - **Guided Creation**: "I'll create a logo based on your description"
+  - **Style Variety**: "Let me generate this in multiple styles for you to choose"
+- **User Experience**: Describe vision → Get professional results with style explanations
+- **Smart Behavior**: Automatic style selection based on context
+- **Authentication**: Works with trial sessions OR API keys  
+- **Status**: ✅ Working - intelligent text-to-image generation
+
+#### **🎯 Style Discovery & Guidance**
+
+**`list_styles`** - Discover available styles
+- **AI Assistant Use**: "Here are the artistic styles I can create for you..."
+- **User Experience**: Conversational style explanations with examples
+- **Returns**: 5 curated professional styles with descriptions
+- **Status**: ✅ Working - style education and selection
+
+**`get_style_details`** - Deep style information
+- **AI Assistant Use**: Provide rich context about chosen styles
+- **User Experience**: "Van Gogh style uses bold, swirling brush strokes that..."
+- **Returns**: Complete style context for informed decisions
+- **Status**: ✅ Working - style expertise on demand
+
+### 💡 How AI Assistants Use These Tools
+
+#### **Discovery & Onboarding Pattern**
+```
+User: "What can you do with images?"
+
+AI Assistant Process:
+1. start_trial_session() → Get session for demos
+2. list_styles() → Learn available options  
+3. Present capabilities conversationally with examples
+
+User Experience:
+"I can transform your images in 5 artistic styles: Van Gogh's bold strokes, retro pixel art, modern flat design, soft neumorphic interfaces, and geometric abstraction. Want to try one with your own image?"
+```
+
+#### **Smart Generation Pattern**
+```
+User: "Make this photo artistic"
+
+AI Assistant Process:
+1. check_trial_status() → Verify available images
+2. stylize_image(no style_id) → Generate 4 random styles
+3. Present results with style education
+
+User Experience:
+"I've created 4 artistic interpretations:
+• Van Gogh: [image] - Bold, emotional brush work
+• Pixel Art: [image] - Nostalgic 8-bit charm  
+• Flat UI: [image] - Clean, modern simplicity
+• Neumorphic: [image] - Soft, tactile interface
+
+Which direction speaks to you? I can refine any of these further!"
+```
+
+#### **Conversion & Growth Pattern**
+```
+User: "Create another image"
+
+AI Assistant Process:
+1. check_trial_status() → Sees trial exhausted
+2. Present upgrade options conversationally
+
+User Experience:
+"You've explored all 5 trial images! Ready to unlock more creativity? 
+🆓 Sign up for 100 free images per month, or
+💎 Get unlimited access with credit packages
+I can help you sign up right now!"
+```
 
 ### MCP Resources
 

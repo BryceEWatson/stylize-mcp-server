@@ -1588,6 +1588,15 @@ async def logout(request: Request):
     response.delete_cookie(key="access_token")
     return response
 
+@app.get("/web/demo", response_class=HTMLResponse)
+async def show_demo_page(request: Request):
+    """Show the demo page for trying the service with free credits."""
+    try:
+        return templates.TemplateResponse("demo.html", {"request": request})
+    except Exception as e:
+        logger.error(f"Error rendering demo page: {str(e)}")
+        return HTMLResponse(content="Demo page is temporarily unavailable", status_code=500)
+
 # The MCP endpoint is now handled by the router included above
 
 # Main entry point

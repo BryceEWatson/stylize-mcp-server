@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Try Stylize MCP - Free Demo</title>
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary-color: #8b5cf6;
+            --accent-color: #f59e0b;
+            --success-color: #10b981;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --background-light: #f9fafb;
+            --border-color: #e5e7eb;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 48px;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+        
+        .header .subtitle {
+            font-size: 20px;
+            opacity: 0.9;
+            margin-bottom: 32px;
+        }
+        
+        .trial-status {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 24px;
+            color: white;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .trial-status h3 {
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+        
+        .credits-remaining {
+            font-size: 36px;
+            font-weight: bold;
+            color: #fbbf24;
+            margin: 16px 0;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+        
+        .demo-section, .mcp-section {
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        .section-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        
+        .section-header h2 {
+            font-size: 28px;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        
+        .section-header p {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+        
+        .upload-area {
+            border: 3px dashed var(--border-color);
+            border-radius: 16px;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 24px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .upload-area:hover {
+            border-color: var(--primary-color);
+            background: var(--background-light);
+        }
+        
+        .upload-area.dragover {
+            border-color: var(--primary-color);
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.6;
+        }
+        
+        .upload-text {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+        
+        .style-selector {
+            margin-bottom: 24px;
+        }
+        
+        .style-selector label {
+            display: block;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+        
+        .style-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 12px;
+        }
+        
+        .style-option {
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+        
+        .style-option:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+        
+        .style-option.selected {
+            border-color: var(--primary-color);
+            background: rgba(99, 102, 241, 0.1);
+        }
+        
+        .style-option .icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .style-option .name {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        
+        .text-prompt {
+            margin-bottom: 24px;
+        }
+        
+        .text-prompt label {
+            display: block;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        
+        .text-prompt input {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+        
+        .text-prompt input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+        
+        .generate-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .generate-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .result-area {
+            margin-top: 32px;
+            padding: 24px;
+            background: var(--background-light);
+            border-radius: 16px;
+            text-align: center;
+            display: none;
+        }
+        
+        .result-images {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+        
+        .result-image {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+        
+        .result-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .result-image .style-label {
+            padding: 12px;
+            background: white;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .mcp-steps {
+            list-style: none;
+        }
+        
+        .mcp-steps li {
+            margin-bottom: 24px;
+            padding: 20px;
+            background: var(--background-light);
+            border-radius: 12px;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .step-number {
+            display: inline-block;
+            width: 32px;
+            height: 32px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 32px;
+            font-weight: bold;
+            margin-right: 16px;
+        }
+        
+        .step-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        
+        .step-description {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        .code-block {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin: 12px 0;
+            overflow-x: auto;
+        }
+        
+        .upgrade-cta {
+            background: linear-gradient(135deg, var(--accent-color), #f97316);
+            color: white;
+            padding: 32px;
+            border-radius: 20px;
+            text-align: center;
+            margin-top: 40px;
+        }
+        
+        .upgrade-cta h3 {
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+        
+        .upgrade-cta p {
+            font-size: 16px;
+            margin-bottom: 24px;
+            opacity: 0.9;
+        }
+        
+        .upgrade-btn {
+            background: white;
+            color: var(--accent-color);
+            padding: 16px 32px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+        
+        .upgrade-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 16px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 Try Stylize MCP</h1>
+            <p class="subtitle">Transform your images with AI-powered artistic styles - completely free!</p>
+        </div>
+        
+        <div class="trial-status">
+            <h3>🆓 Free Trial</h3>
+            <p>No signup required - start creating immediately</p>
+            <div class="credits-remaining" id="creditsRemaining">5</div>
+            <p>free images remaining</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="demo-section">
+                <div class="section-header">
+                    <h2>🖼️ Try Image Stylization</h2>
+                    <p>Upload an image or enter a text prompt to see the magic happen</p>
+                </div>
+                
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📷</div>
+                    <div class="upload-text">
+                        <strong>Click to upload an image</strong><br>
+                        or drag and drop here<br>
+                        <small>Supports JPG, PNG, WebP</small>
+                    </div>
+                    <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                </div>
+                
+                <div class="text-prompt">
+                    <label for="promptInput">Or describe what you want to create:</label>
+                    <input type="text" id="promptInput" placeholder="e.g., a beautiful sunset over mountains, a cute cat wearing a hat...">
+                </div>
+                
+                <div class="style-selector">
+                    <label>Choose a style (or leave blank for 4 random styles):</label>
+                    <div class="style-grid">
+                        <div class="style-option" data-style="">
+                            <div class="icon">🎲</div>
+                            <div class="name">Surprise Me</div>
+                        </div>
+                        <div class="style-option" data-style="van_gogh">
+                            <div class="icon">🌟</div>
+                            <div class="name">Van Gogh</div>
+                        </div>
+                        <div class="style-option" data-style="pixel_art">
+                            <div class="icon">🎮</div>
+                            <div class="name">Pixel Art</div>
+                        </div>
+                        <div class="style-option" data-style="flat_ui_icon">
+                            <div class="icon">📱</div>
+                            <div class="name">Flat UI</div>
+                        </div>
+                        <div class="style-option" data-style="neumorphic_button">
+                            <div class="icon">🔘</div>
+                            <div class="name">Neumorphic</div>
+                        </div>
+                        <div class="style-option" data-style="glassmorphic_card">
+                            <div class="icon">💎</div>
+                            <div class="name">Glass</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="generate-btn" id="generateBtn">
+                    ✨ Generate Styled Image
+                </button>
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Creating your masterpiece...</p>
+                </div>
+                
+                <div class="error-message" id="errorMessage"></div>
+                
+                <div class="result-area" id="resultArea">
+                    <h3>🎉 Your Styled Image(s)</h3>
+                    <div class="result-images" id="resultImages"></div>
+                </div>
+            </div>
+            
+            <div class="mcp-section">
+                <div class="section-header">
+                    <h2>🤖 Add to Your AI Assistant</h2>
+                    <p>Integrate Stylize MCP with Claude, ChatGPT, or any MCP-compatible AI</p>
+                </div>
+                
+                <ol class="mcp-steps">
+                    <li>
+                        <span class="step-number">1</span>
+                        <div class="step-title">Install Claude Desktop</div>
+                        <div class="step-description">
+                            Download Claude Desktop from <a href="https://claude.ai/download" target="_blank">claude.ai/download</a>
+                        </div>
+                    </li>
+                    
+                    <li>
+                        <span class="step-number">2</span>
+                        <div class="step-title">Configure MCP Settings</div>
+                        <div class="step-description">
+                            Add this to your Claude Desktop configuration file:
+                            <div class="code-block">{
+  "mcpServers": {
+    "stylize-mcp": {
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/mcp-client", "http://localhost:8080/mcp"]
+    }
+  }
+}</div>
+                        </div>
+                    </li>
+                    
+                    <li>
+                        <span class="step-number">3</span>
+                        <div class="step-title">Get Your API Key</div>
+                        <div class="step-description">
+                            Create a free account to get your API key for unlimited access to the MCP server.
+                        </div>
+                    </li>
+                    
+                    <li>
+                        <span class="step-number">4</span>
+                        <div class="step-title">Start Creating</div>
+                        <div class="step-description">
+                            Chat with Claude and ask it to stylize images, create art, or transform photos using natural language!
+                            <div class="code-block">"Hey Claude, can you make this photo look like a Van Gogh painting?"</div>
+                        </div>
+                    </li>
+                </ol>
+                
+                <div style="text-align: center; margin-top: 32px;">
+                    <a href="/docs" class="upgrade-btn" style="margin-right: 16px;">📚 View API Docs</a>
+                    <a href="/web/upgrade" class="upgrade-btn">🚀 Get API Key</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="upgrade-cta" id="upgradeCta" style="display: none;">
+            <h3>🎉 You've used all 5 free images!</h3>
+            <p>Ready for unlimited creativity? Sign up for 100 free images per month or purchase credits for unlimited access.</p>
+            <a href="/web/upgrade" class="upgrade-btn">Sign Up for Free Account</a>
+        </div>
+    </div>
+    
+    <script>
+        let selectedStyle = '';
+        let creditsUsed = 0;
+        let maxCredits = 5;
+        let sessionId = null;
+        
+        // Initialize trial session
+        async function initTrialSession() {
+            try {
+                const response = await fetch('/trial/start', { method: 'POST' });
+                const data = await response.json();
+                sessionId = data.session_id;
+                updateCreditsDisplay(data.images_remaining);
+            } catch (error) {
+                console.error('Failed to start trial session:', error);
+            }
+        }
+        
+        // Update credits display
+        function updateCreditsDisplay(remaining) {
+            document.getElementById('creditsRemaining').textContent = remaining;
+            if (remaining === 0) {
+                document.getElementById('upgradeCta').style.display = 'block';
+                document.getElementById('generateBtn').disabled = true;
+                document.getElementById('generateBtn').textContent = '✋ Trial Complete - Sign Up for More';
+            }
+        }
+        
+        // Style selection
+        document.querySelectorAll('.style-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.style-option').forEach(o => o.classList.remove('selected'));
+                option.classList.add('selected');
+                selectedStyle = option.dataset.style;
+            });
+        });
+        
+        // Default to "Surprise Me"
+        document.querySelector('.style-option[data-style=""]').classList.add('selected');
+        
+        // File upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const imageInput = document.getElementById('imageInput');
+        let uploadedImage = null;
+        
+        uploadArea.addEventListener('click', () => imageInput.click());
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+        
+        imageInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+        
+        function handleFileSelect(file) {
+            if (!file.type.startsWith('image/')) {
+                showError('Please select a valid image file');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                uploadedImage = e.target.result.split(',')[1]; // Remove data:image/... prefix
+                uploadArea.innerHTML = `
+                    <div class="upload-icon">✅</div>
+                    <div class="upload-text">
+                        <strong>Image uploaded successfully!</strong><br>
+                        ${file.name}<br>
+                        <small>Click to change image</small>
+                    </div>
+                `;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Generate button handling
+        document.getElementById('generateBtn').addEventListener('click', async () => {
+            const promptText = document.getElementById('promptInput').value.trim();
+            
+            if (!uploadedImage && !promptText) {
+                showError('Please upload an image or enter a text prompt');
+                return;
+            }
+            
+            if (creditsUsed >= maxCredits) {
+                showError('You have used all your free credits. Please sign up for more!');
+                return;
+            }
+            
+            await generateImage();
+        });
+        
+        async function generateImage() {
+            const loading = document.getElementById('loading');
+            const generateBtn = document.getElementById('generateBtn');
+            const errorMessage = document.getElementById('errorMessage');
+            const resultArea = document.getElementById('resultArea');
+            
+            // Show loading state
+            loading.style.display = 'block';
+            generateBtn.disabled = true;
+            errorMessage.style.display = 'none';
+            resultArea.style.display = 'none';
+            
+            try {
+                const formData = new FormData();
+                
+                if (uploadedImage) {
+                    // Convert base64 back to blob for form data
+                    const blob = await fetch(`data:image/jpeg;base64,${uploadedImage}`).then(r => r.blob());
+                    formData.append('image', blob, 'image.jpg');
+                }
+                
+                const promptText = document.getElementById('promptInput').value.trim();
+                if (promptText) {
+                    formData.append('user_prompt', promptText);
+                }
+                
+                if (selectedStyle) {
+                    formData.append('style_id', selectedStyle);
+                }
+                
+                if (sessionId) {
+                    formData.append('session_id', sessionId);
+                }
+                
+                const response = await fetch('/stylize_image', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Generation failed');
+                }
+                
+                displayResults(data);
+                
+                // Update credits
+                if (data.trial_info) {
+                    updateCreditsDisplay(data.trial_info.images_remaining);
+                }
+                
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                loading.style.display = 'none';
+                generateBtn.disabled = false;
+            }
+        }
+        
+        function displayResults(data) {
+            const resultArea = document.getElementById('resultArea');
+            const resultImages = document.getElementById('resultImages');
+            
+            resultImages.innerHTML = '';
+            
+            if (data.multiple_styles) {
+                // Multiple style results
+                data.images.forEach(image => {
+                    const imageDiv = document.createElement('div');
+                    imageDiv.className = 'result-image';
+                    imageDiv.innerHTML = `
+                        <img src="${image.stylized_image_url}" alt="${image.style_name}" loading="lazy">
+                        <div class="style-label">${image.style_name}</div>
+                    `;
+                    resultImages.appendChild(imageDiv);
+                });
+            } else {
+                // Single style result
+                const imageDiv = document.createElement('div');
+                imageDiv.className = 'result-image';
+                imageDiv.innerHTML = `
+                    <img src="${data.stylized_image_url}" alt="Styled Image" loading="lazy">
+                    <div class="style-label">${data.style || 'Custom Style'}</div>
+                `;
+                resultImages.appendChild(imageDiv);
+            }
+            
+            resultArea.style.display = 'block';
+            resultArea.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function showError(message) {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+        
+        // Initialize on page load
+        initTrialSession();
+    </script>
+</body>
+</html>

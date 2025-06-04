@@ -393,6 +393,255 @@ ruff check app/ tests/
 ruff check --fix app/ tests/
 ```
 
+## AI Assistant Integration via MCP
+
+### Overview
+This server is designed to be used by AI assistants (like Claude) through the Model Context Protocol (MCP). AI assistants connect to the `/mcp` endpoint and use the available tools to help users create and stylize images through natural conversation.
+
+### Natural Conversation Flow Examples
+
+#### **Scenario 1: First-Time User - Image Stylization**
+```
+User: "Can you make this photo look like a Van Gogh painting?"
+
+AI Assistant Internal Flow:
+1. start_trial_session() → Gets session_id for anonymous user
+2. User uploads photo to chat
+3. stylize_image(image_base64="...", style_id="van_gogh", session_id="trial-123")
+4. Present result to user with remaining trial info
+
+AI Assistant Response:
+"I've transformed your photo into Van Gogh's distinctive style with bold, swirling brush strokes and vibrant colors! Here's your artistic interpretation. You have 4 more free transformations remaining in your trial."
+```
+
+#### **Scenario 2: Style Exploration**
+```
+User: "What different art styles can you create?"
+
+AI Assistant Internal Flow:
+1. list_styles() → Get all available styles
+2. get_style_details() for each style → Get descriptions
+
+AI Assistant Response:
+"I can create images in 5 different artistic styles:
+• Van Gogh: Bold, swirling brush strokes with vibrant colors
+• Pixel Art: Retro 8-bit aesthetic with blocky pixels
+• Flat UI Icon: Modern minimalist design with solid colors
+• Neumorphic Button: Soft, dimensional interface elements
+• Glassmorphic Card: Frosted glass transparency effects
+
+Would you like me to show your image in multiple styles, or do you have a preference?"
+```
+
+#### **Scenario 3: Multi-Style Generation**
+```
+User: "Show me this landscape in different artistic styles"
+
+AI Assistant Internal Flow:
+1. stylize_image(image_base64="...", session_id="trial-123") 
+   # Note: Omitting style_id automatically generates 4 random styles
+2. Present all 4 variations
+
+AI Assistant Response:
+"Here are 4 different artistic interpretations of your landscape:
+
+1. **Van Gogh Style**: Swirling sky with expressive brush strokes
+2. **Pixel Art**: Retro gaming aesthetic with blocky trees
+3. **Flat UI**: Clean, minimal landscape icon
+4. **Glassmorphic**: Transparent, modern glass effect
+
+Which style resonates with you? I can create more variations in that style!"
+```
+
+#### **Scenario 4: Text-to-Image Creation**
+```
+User: "Create a logo for my coffee shop called 'Morning Brew'"
+
+AI Assistant Internal Flow:
+1. Check trial status with check_trial_status()
+2. generate_image_from_text(prompt="coffee shop logo for Morning Brew, warm and inviting", style_id="flat_ui_icon")
+
+AI Assistant Response:
+"I've created a modern flat UI logo for Morning Brew with warm, inviting coffee elements. The clean design would work well across different media. Would you like me to try other styles or refine this design further?"
+```
+
+#### **Scenario 5: Brand-Aware Generation**
+```
+User: "I need marketing images for my tech startup. Our brand colors are blue and orange, and we want a modern, professional look."
+
+AI Assistant Internal Flow:
+1. generate_image_from_text(
+     prompt="tech startup marketing image with innovative technology",
+     style_id="flat_ui_icon",
+     project_context={
+       "brand_colors": ["#007ACC", "#FF6B35"], 
+       "mood": "professional and modern",
+       "target_audience": "tech professionals"
+     }
+   )
+
+AI Assistant Response:
+"I've created marketing imagery that incorporates your blue and orange brand colors with a modern, professional aesthetic perfect for tech audiences. The flat design style ensures it will work well across digital platforms."
+```
+
+### Progressive User Journey Management
+
+#### **Phase 1: Trial Discovery (Images 1-3)**
+```python
+# AI assistant focuses on demonstrating value without mentioning limits
+if trial_info.images_used <= 3:
+    # Just show the result enthusiastically
+    response = f"Here's your {style_applied} styled image! The {describe_style_effect()} really brings out the artistic character."
+```
+
+#### **Phase 2: Trial Awareness (Images 4-5)**
+```python
+# AI assistant mentions remaining trial images casually
+if trial_info.images_remaining <= 2:
+    response = f"Here's your stylized image! You have {trial_info.images_remaining} trial images remaining. After that, you can sign up for 100 free images per month."
+```
+
+#### **Phase 3: Conversion Opportunity (Trial Exhausted)**
+```python
+# AI assistant provides clear upgrade path
+if trial_info.images_remaining == 0:
+    response = "You've used all 5 trial images! I can help you sign up for a free account with 100 images per month, or you can purchase credits for unlimited usage. Would you like me to guide you through the signup process?"
+```
+
+### Error Handling Patterns
+
+#### **Trial Limit Exceeded**
+```python
+try:
+    result = await stylize_image(session_id="trial-123", ...)
+except TrialLimitExceeded:
+    return """You've reached your trial limit, but don't worry! You have great options:
+    
+    🆓 **Free Account**: Sign up for 100 free images per month
+    💳 **Credit Packages**: Purchase credits for unlimited usage
+    
+    I can help you sign up or show you the pricing options. What would you prefer?"""
+```
+
+#### **Content Policy Violation**
+```python
+try:
+    result = await stylize_image(image_base64="...", ...)
+except ContentViolation:
+    return "I can't process this image due to content guidelines. Please try a different image, and I'll be happy to help with the stylization!"
+```
+
+#### **Service Temporarily Unavailable**
+```python
+try:
+    result = await generate_image_from_text(...)
+except ServiceUnavailable:
+    return "The image generation service is temporarily unavailable. Please try again in a few minutes, or I can help you with other tasks in the meantime."
+```
+
+### Tool Orchestration Patterns
+
+#### **Discover → Generate → Refine Workflow**
+```python
+# 1. Style Discovery Phase
+styles = await list_styles()
+# Present options to user conversationally
+
+# 2. Initial Generation
+if user_wants_multiple_styles:
+    result = await stylize_image(..., session_id="trial-123")  # Omit style_id for 4 random
+else:
+    result = await stylize_image(..., style_id=user_selected_style, session_id="trial-123")
+
+# 3. Refinement Phase
+if user_wants_variations:
+    refined_result = await generate_image_from_text(
+        prompt=f"refined version of {user_feedback}",
+        style_id=preferred_style
+    )
+```
+
+#### **Context-Aware Multi-Modal Workflow**
+```python
+# When user provides reference image + text description
+context_summary = analyze_uploaded_image(reference_image)
+
+# Generate with both visual and textual context
+result = await stylize_image(
+    image_base64=user_uploaded_image,
+    style_id="van_gogh",
+    user_prompt="make it more vibrant and energetic",
+    project_context={
+        "reference_style": context_summary,
+        "mood": "energetic and vibrant"
+    }
+)
+```
+
+### Authentication Flow Management
+
+#### **Seamless Trial-to-API Key Transition**
+```python
+class MCPImageClient:
+    def __init__(self):
+        self.session_id = None
+        self.api_key = None
+    
+    async def ensure_auth(self):
+        """Ensure we have valid authentication for image generation."""
+        if not self.api_key and not self.session_id:
+            # Start trial session for new users
+            trial = await start_trial_session()
+            self.session_id = trial["session_id"]
+            return f"Started your free trial! You have {trial['images_remaining']} images to explore."
+    
+    async def generate_image(self, **kwargs):
+        """Generate image with automatic auth handling."""
+        auth_message = await self.ensure_auth()
+        
+        try:
+            if self.api_key:
+                return await stylize_image(api_key=self.api_key, **kwargs)
+            else:
+                return await stylize_image(session_id=self.session_id, **kwargs)
+        except TrialExhausted:
+            return {
+                "error": "trial_exhausted",
+                "message": "Your trial has ended! Would you like to sign up for 100 free images per month?",
+                "upgrade_options": await self.get_upgrade_options()
+            }
+    
+    async def handle_user_upgrade(self, user_choice):
+        """Handle user decision to upgrade."""
+        if user_choice == "signup":
+            return "Great! Visit this link to create your free account: /web/upgrade"
+        elif user_choice == "credits":
+            packages = await self.get_credit_packages()
+            return f"Here are the available credit packages: {format_packages(packages)}"
+```
+
+### Best Practices for AI Assistants
+
+#### **Value-First Approach**
+- Always demonstrate capabilities before mentioning limitations
+- Focus on the creative result, not the technical process
+- Use trial limits as gentle guidance, not barriers
+
+#### **Natural Language Integration**
+- Embed tool calls seamlessly in conversation flow
+- Translate technical responses into conversational language
+- Provide context and suggestions for next steps
+
+#### **Progressive Disclosure**
+- Start with simple single-style generation
+- Introduce multi-style options based on user interest
+- Offer advanced features (project context) for engaged users
+
+#### **Graceful Limit Handling**
+- Never abruptly stop service when limits are reached
+- Always provide clear next steps and options
+- Make upgrading feel like a natural progression, not a paywall
+
 ## Development Best Practices
 - Always activate the venv before installing libraries
 - Run tests before committing: `pytest`
