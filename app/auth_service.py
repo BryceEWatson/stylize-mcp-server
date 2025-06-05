@@ -150,7 +150,7 @@ class AuthService:
         permissions: list[APIPermission] = None
     ) -> tuple[str, APIKeyAuth]:
         """Create a new API key.
-        
+
         Returns:
             Tuple of (plain_api_key, api_key_auth_object)
         """
