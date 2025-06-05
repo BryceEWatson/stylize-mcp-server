@@ -103,12 +103,13 @@ select = [
 ignore = [
     "E501",  # line too long, handled by black
     "B008",  # do not perform function calls in argument defaults
+    "B904",  # raise ... from err inside except clause - causes more problems than it solves in CI
     "C901",  # too complex
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
-"tests/**/*" = ["E501"]
+"tests/**/*" = ["E501", "E722"]  # Allow bare except in tests for stability
 
 [tool.black]
 target-version = ['py310']
