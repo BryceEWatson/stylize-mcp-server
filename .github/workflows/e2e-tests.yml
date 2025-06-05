@@ -255,7 +255,7 @@ jobs:
           fi
 
       - name: Upload test reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: e2e-test-reports-${{ matrix.test-suite }}-${{ matrix.browser }}
@@ -263,7 +263,7 @@ jobs:
           retention-days: 7
 
       - name: Upload screenshots on failure
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: screenshots-${{ matrix.test-suite }}-${{ matrix.browser }}
@@ -323,7 +323,7 @@ jobs:
             -m "security"
 
       - name: Upload security test reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: security-test-reports
@@ -383,7 +383,7 @@ jobs:
             -m "performance"
 
       - name: Upload performance test reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: performance-test-reports
@@ -401,7 +401,7 @@ jobs:
     if: always()
     steps:
       - name: Download all test reports
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: all-reports
 
@@ -430,7 +430,7 @@ jobs:
           done
 
       - name: Upload test summary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test-summary
           path: test-summary.md
