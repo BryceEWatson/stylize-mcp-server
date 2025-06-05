@@ -14,10 +14,10 @@ class ContextAnalysisService:
 
     def analyze(self, context: ProjectContext) -> dict[str, Any]:
         """Analyze the project context and extract information for prompt generation.
-        
+
         Args:
             context: A validated ProjectContext Pydantic object.
-            
+
         Returns:
             A dictionary containing:
             - context_summary_string: A textual summary of the context
@@ -62,13 +62,13 @@ class ContextAnalysisService:
 
     def _generate_context_summary(self, context: ProjectContext) -> str:
         """Generate a descriptive summary string from the project context.
-        
+
         This concatenates relevant text fields into a readable description that can
         be incorporated into the prompt.
-        
+
         Args:
             context: The ProjectContext object
-            
+
         Returns:
             A concatenated string summarizing the context
         """

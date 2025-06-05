@@ -59,10 +59,10 @@ class OpenAIService:
 
     def _get_api_key(self) -> str:
         """Retrieve the OpenAI API key from Secret Manager or environment variable.
-        
+
         Returns:
             str: The OpenAI API key
-        
+
         Raises:
             OpenAIServiceError: If the API key cannot be retrieved
         """
@@ -129,13 +129,13 @@ class OpenAIService:
 
     def generate_image_from_prompt(self, prompt: str) -> bytes:
         """Generate an image from a text prompt using DALL-E 3.
-        
+
         Args:
             prompt: The text prompt to guide image generation
-            
+
         Returns:
             bytes: The generated image data as bytes
-            
+
         Raises:
             OpenAIAPIConnectionError: If there's a connection error with the OpenAI API
             OpenAIRateLimitError: If rate limits are exceeded
@@ -190,14 +190,14 @@ class OpenAIService:
     def generate_image_from_prompt_and_reference(self, prompt: str, reference_image_bytes: bytes) -> bytes:
         """Generate an image using a two-step process: GPT-4V to analyze the reference image and create an
         enhanced prompt, followed by DALL-E 3 to generate a new image based on that prompt.
-        
+
         Args:
             prompt: The base text prompt to guide the image generation
             reference_image_bytes: The reference image as bytes
-            
+
         Returns:
             bytes: The generated image data as bytes
-            
+
         Raises:
             OpenAIAPIConnectionError: If there's a connection error with the OpenAI API
             OpenAIRateLimitError: If rate limits are exceeded
@@ -256,14 +256,14 @@ class OpenAIService:
 
     def _analyze_reference_image_with_gpt4v(self, prompt: str, reference_image_bytes: bytes) -> str:
         """Use GPT-4V to analyze the reference image and create an enhanced prompt for DALL-E 3.
-        
+
         Args:
             prompt: The base text prompt to guide the image generation
             reference_image_bytes: The reference image as bytes
-            
+
         Returns:
             str: The enhanced prompt optimized for DALL-E 3
-            
+
         Raises:
             OpenAIAPIConnectionError: If there's a connection error with the OpenAI API
             OpenAIRateLimitError: If rate limits are exceeded
@@ -282,19 +282,19 @@ class OpenAIService:
             image_url = f"data:{mime_type};base64,{base64_image}"
 
             # Create the system prompt instructing GPT-4V how to analyze the image
-            system_prompt = """You are an AI visual consultant tasked with analyzing reference images to generate optimized text prompts for DALL-E 3. 
-            Your job is to carefully examine the provided reference image and the user's textual context/style information, 
-            then create a detailed, purely textual prompt for DALL-E 3 to generate a refreshed version or new interpretation 
-            of the reference image in the specified style. Focus on visual elements, composition, colors, and style 
-            while incorporating the user's style preferences. Provide ONLY the final prompt for DALL-E 3, 
+            system_prompt = """You are an AI visual consultant tasked with analyzing reference images to generate optimized text prompts for DALL-E 3.
+            Your job is to carefully examine the provided reference image and the user's textual context/style information,
+            then create a detailed, purely textual prompt for DALL-E 3 to generate a refreshed version or new interpretation
+            of the reference image in the specified style. Focus on visual elements, composition, colors, and style
+            while incorporating the user's style preferences. Provide ONLY the final prompt for DALL-E 3,
             with no explanations, introductions, or additional commentary."""
 
             # Create a precise user prompt that includes both the reference image and the context
-            user_prompt = f"""Analyze this reference image and create an enhanced, detailed prompt for DALL-E 3 that would 
-            generate a refreshed version of this image in the specified style. 
-            
+            user_prompt = f"""Analyze this reference image and create an enhanced, detailed prompt for DALL-E 3 that would
+            generate a refreshed version of this image in the specified style.
+
             Style and Context Information: {prompt}
-            
+
             Provide just the enhanced prompt text with no additional explanation or formatting. Your output will be sent directly to DALL-E 3."""
 
             # Call the Chat Completions API with the vision-capable model
@@ -356,13 +356,13 @@ class OpenAIService:
 
     def _get_image_data_from_response(self, response: Any) -> bytes:
         """Extract image data from an OpenAI image generation response.
-        
+
         Args:
             response: The OpenAI image generation response
-            
+
         Returns:
             bytes: The image data as bytes
-            
+
         Raises:
             OpenAIServiceError: If the image data cannot be retrieved
         """
@@ -399,13 +399,13 @@ class OpenAIService:
 
     def _fetch_image_from_url(self, url: str) -> bytes:
         """Fetch image data from a URL.
-        
+
         Args:
             url: The URL of the image
-            
+
         Returns:
             bytes: The image data as bytes
-            
+
         Raises:
             OpenAIServiceError: If the image data cannot be fetched
         """
@@ -422,14 +422,14 @@ class OpenAIService:
 
     def generate_image_variation(self, prompt: str, reference_image_bytes: bytes) -> bytes:
         """Generate a variation of an existing image using DALL-E.
-        
+
         Args:
             prompt: Optional text prompt to guide the variation generation
             reference_image_bytes: The reference image as bytes
-            
+
         Returns:
             bytes: The generated image data as bytes
-            
+
         Raises:
             OpenAIAPIConnectionError: If there's a connection error with the OpenAI API
             OpenAIRateLimitError: If rate limits are exceeded
@@ -500,18 +500,18 @@ class OpenAIService:
 
     def transform_image_with_style(self, input_image_bytes: bytes, style_prompt: str) -> bytes:
         """Transform an input image by applying a style using GPT-4V analysis and DALL-E 3 generation.
-        
+
         This method uses a two-step process:
         1. GPT-4V analyzes the input image to understand its content
         2. DALL-E 3 generates a new image based on the analysis and style prompt
-        
+
         Args:
             input_image_bytes: The input image to transform as bytes
             style_prompt: The style prompt describing how to transform the image
-            
+
         Returns:
             bytes: The transformed image data as bytes
-            
+
         Raises:
             OpenAIAPIConnectionError: If there's a connection error with the OpenAI API
             OpenAIRateLimitError: If rate limits are exceeded
@@ -539,14 +539,14 @@ class OpenAIService:
 
     def _analyze_input_image_for_transformation(self, input_image_bytes: bytes, style_prompt: str) -> str:
         """Use GPT-4V to analyze the input image and create an enhanced prompt for transformation.
-        
+
         Args:
             input_image_bytes: The input image as bytes
             style_prompt: The style prompt describing how to transform the image
-            
+
         Returns:
             str: The enhanced prompt optimized for DALL-E 3
-            
+
         Raises:
             OpenAIAPIConnectionError: If there's a connection error with the OpenAI API
             OpenAIRateLimitError: If rate limits are exceeded
@@ -633,10 +633,10 @@ class OpenAIService:
 
     def _get_image_mime_type(self, image_bytes: bytes) -> str:
         """Determine the MIME type of an image from its bytes.
-        
+
         Args:
             image_bytes: The image data as bytes
-            
+
         Returns:
             str: The MIME type of the image (e.g., 'image/jpeg', 'image/png')
         """

@@ -462,16 +462,16 @@ async def stylize_image(
     auth: dict | None = Depends(require_stylize_permission_with_trial)
 ):
     """Stylize an uploaded image or generate from text with the specified style.
-    
+
     Args:
         image: Optional image file to stylize
         style_id: The ID of the style to apply
         user_prompt: Optional user prompt to combine with the style's prompt fragment
         project_context_str: Optional JSON string containing structured contextual information
-        
+
     Returns:
         JSON with original_id, style, and stylized_image_url
-        
+
     Raises:
         HTTP 400 Bad Request: If validation fails for any reason
     """
@@ -868,11 +868,11 @@ async def stylize_image(
 @app.get("/styles")
 async def get_styles(auth: dict | None = Depends(require_styles_permission)):
     """Get available styles.
-    
+
     Returns:
         JSON array of available styles
     """
-    style_service = get_style_service()
+    get_style_service()
     return get_style_service().get_all_styles()
 
 # Admin endpoints for API key management
@@ -882,10 +882,10 @@ async def create_api_key(
     auth: dict | None = Depends(require_admin_permission)
 ):
     """Create a new API key.
-    
+
     Args:
         request: API key creation request with name and permissions
-        
+
     Returns:
         Created API key information including the actual key (shown only once)
     """
@@ -916,7 +916,7 @@ async def create_api_key(
 @app.get("/admin/api-keys")
 async def list_api_keys(auth: dict | None = Depends(require_admin_permission)):
     """List all API keys (without the actual key values).
-    
+
     Returns:
         List of API key information
     """
@@ -939,11 +939,11 @@ async def update_api_key(
     auth: dict | None = Depends(require_admin_permission)
 ):
     """Update an API key's properties.
-    
+
     Args:
         key_id: The ID of the API key to update
         request: Update request with new properties
-        
+
     Returns:
         Success message
     """
@@ -977,10 +977,10 @@ async def deactivate_api_key(
     auth: dict | None = Depends(require_admin_permission)
 ):
     """Deactivate an API key.
-    
+
     Args:
         key_id: The ID of the API key to deactivate
-        
+
     Returns:
         Success message
     """
@@ -1008,10 +1008,10 @@ async def deactivate_api_key(
 @app.post("/auth/register", response_model=AuthTokenResponse)
 async def register_user(registration: UserRegistrationRequest):
     """Register a new user account.
-    
+
     Args:
         registration: User registration information
-        
+
     Returns:
         JWT access token and user profile
     """
@@ -1048,10 +1048,10 @@ async def register_user(registration: UserRegistrationRequest):
 @app.post("/auth/login", response_model=AuthTokenResponse)
 async def login_user(login: UserLoginRequest):
     """Authenticate user login.
-    
+
     Args:
         login: User login credentials
-        
+
     Returns:
         JWT access token and user profile
     """
@@ -1088,7 +1088,7 @@ async def login_user(login: UserLoginRequest):
 @app.get("/user/profile")
 async def get_user_profile(auth=Depends(require_styles_permission)):
     """Get current user's profile.
-    
+
     Returns:
         User profile information
     """
@@ -1111,7 +1111,7 @@ async def get_user_profile(auth=Depends(require_styles_permission)):
 @app.get("/user/usage")
 async def get_user_usage(auth=Depends(require_styles_permission)):
     """Get current user's usage statistics.
-    
+
     Returns:
         Usage statistics and subscription limits
     """
@@ -1147,10 +1147,10 @@ async def create_user_api_key(
     auth=Depends(require_styles_permission)
 ):
     """Create an API key for the current user.
-    
+
     Args:
         request: API key creation request
-        
+
     Returns:
         Created API key information
     """
@@ -1193,7 +1193,7 @@ async def create_user_api_key(
 @app.get("/trial/status")
 async def get_trial_status(request: Request):
     """Get trial status for anonymous users.
-    
+
     Returns:
         Trial usage information and upgrade options
     """
@@ -1220,10 +1220,10 @@ async def get_trial_status(request: Request):
 @app.post("/trial/convert", response_model=AuthTokenResponse)
 async def convert_trial_to_account(conversion: TrialToAccountRequest):
     """Convert trial session to full user account.
-    
+
     Args:
         conversion: Trial conversion request with user registration info
-        
+
     Returns:
         JWT access token and user profile
     """
@@ -1260,7 +1260,7 @@ async def convert_trial_to_account(conversion: TrialToAccountRequest):
 @app.get("/pricing/packages")
 async def get_credit_packages():
     """Get available credit packages for purchase.
-    
+
     Returns:
         List of available credit packages
     """
@@ -1285,7 +1285,7 @@ async def get_credit_packages():
 @app.get("/user/credits")
 async def get_user_credits(auth=Depends(require_styles_permission)):
     """Get current user's credit balance.
-    
+
     Returns:
         User credit balance and usage information
     """
@@ -1298,7 +1298,7 @@ async def get_user_credits(auth=Depends(require_styles_permission)):
 
         user_service = get_user_service()
         user_credits = await user_service.get_user_credits(auth["user"].user_id)
-        
+
         if not user_credits:
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1320,10 +1320,10 @@ async def purchase_credits(
     auth=Depends(require_styles_permission)
 ):
     """Purchase credits for the authenticated user.
-    
+
     Args:
         purchase_request: Credit package to purchase
-        
+
     Returns:
         Purchase confirmation and new credit balance
     """
@@ -1336,10 +1336,10 @@ async def purchase_credits(
 
         user_service = get_user_service()
         success, message = await user_service.purchase_credits(
-            auth["user"].user_id, 
+            auth["user"].user_id,
             purchase_request.package_id
         )
-        
+
         if not success:
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -1348,7 +1348,7 @@ async def purchase_credits(
 
         # Get updated credit balance
         user_credits = await user_service.get_user_credits(auth["user"].user_id)
-        
+
         return {
             "success": True,
             "message": message,
@@ -1365,7 +1365,7 @@ async def purchase_credits(
 @app.get("/user/dashboard")
 async def get_user_dashboard(auth=Depends(require_styles_permission)):
     """Get user dashboard with credits, usage, and upgrade options.
-    
+
     Returns:
         Complete dashboard information for the user
     """
@@ -1378,17 +1378,17 @@ async def get_user_dashboard(auth=Depends(require_styles_permission)):
 
         user_service = get_user_service()
         trial_service = get_trial_service()
-        
+
         # Get user credits and usage
         user_credits = await user_service.get_user_credits(auth["user"].user_id)
         user_usage = await user_service.get_user_usage_stats(auth["user"].user_id)
-        
+
         # Get subscription limits
         limits = user_service.get_subscription_limits(auth["user"].subscription_tier)
-        
+
         # Get available credit packages
         credit_packages = trial_service.get_credit_packages()
-        
+
         return {
             "user": auth["user"].model_dump(),
             "credits": user_credits.model_dump() if user_credits else None,
@@ -1410,7 +1410,7 @@ async def show_trial_upgrade_form(request: Request, session_id: str = None):
     """Show trial upgrade form."""
     try:
         trial_service = get_trial_service()
-        
+
         # If no session_id provided, get from trial status
         if not session_id:
             # This would typically come from a cookie or query param
@@ -1420,17 +1420,17 @@ async def show_trial_upgrade_form(request: Request, session_id: str = None):
                 user_agent=request.headers.get("user-agent")
             )
             session_id = trial_session.session_id
-        
+
         # Get trial status
         can_use, trial_info = await trial_service.check_trial_usage(session_id)
-        
+
         return templates.TemplateResponse("trial_upgrade.html", {
             "request": request,
             "session_id": session_id,
             "trial_info": trial_info,
             "error": None
         })
-        
+
     except Exception as e:
         logger.error(f"Error showing trial upgrade form: {str(e)}")
         return templates.TemplateResponse("trial_upgrade.html", {
@@ -1453,7 +1453,7 @@ async def process_trial_upgrade(
     """Process trial upgrade form submission."""
     try:
         trial_service = get_trial_service()
-        
+
         # Create conversion request
         from app.models import TrialToAccountRequest
         conversion_request = TrialToAccountRequest(
@@ -1464,28 +1464,28 @@ async def process_trial_upgrade(
             last_name=last_name,
             company=company
         )
-        
+
         # Convert trial to account
         success, message, result = await trial_service.convert_trial_to_account(conversion_request)
-        
+
         if not success:
             # Show form again with error
             trial_service = get_trial_service()
             can_use, trial_info = await trial_service.check_trial_usage(session_id)
-            
+
             return templates.TemplateResponse("trial_upgrade.html", {
                 "request": request,
                 "session_id": session_id,
                 "trial_info": trial_info,
                 "error": message
             })
-        
+
         # Success - redirect to dashboard
         access_token = result["access_token"]
         response = RedirectResponse(url="/web/dashboard", status_code=303)
         response.set_cookie(key="access_token", value=access_token, httponly=True)
         return response
-        
+
     except Exception as e:
         logger.error(f"Error processing trial upgrade: {str(e)}")
         return templates.TemplateResponse("trial_upgrade.html", {
@@ -1503,25 +1503,25 @@ async def show_user_dashboard(request: Request, success: str = None):
         access_token = request.cookies.get("access_token")
         if not access_token:
             return RedirectResponse(url="/web/login", status_code=303)
-        
+
         # Verify token and get user
         user_service = get_user_service()
         token_payload = user_service.verify_token(access_token)
         if not token_payload:
             return RedirectResponse(url="/web/login", status_code=303)
-        
+
         user_id = token_payload.get("sub")
         user = await user_service.get_user_by_id(user_id)
         if not user:
             return RedirectResponse(url="/web/login", status_code=303)
-        
+
         # Get dashboard data
         trial_service = get_trial_service()
         user_credits = await user_service.get_user_credits(user_id)
         user_usage = await user_service.get_user_usage_stats(user_id)
         subscription_limits = user_service.get_subscription_limits(user.subscription_tier)
         credit_packages = trial_service.get_credit_packages()
-        
+
         return templates.TemplateResponse("dashboard.html", {
             "request": request,
             "user": user,
@@ -1532,7 +1532,7 @@ async def show_user_dashboard(request: Request, success: str = None):
             "success": success,
             "error": None
         })
-        
+
     except Exception as e:
         logger.error(f"Error showing dashboard: {str(e)}")
         return RedirectResponse(url="/web/login", status_code=303)
@@ -1548,30 +1548,30 @@ async def process_credit_purchase(
         access_token = request.cookies.get("access_token")
         if not access_token:
             return RedirectResponse(url="/web/login", status_code=303)
-        
+
         # Verify token and get user
         user_service = get_user_service()
         token_payload = user_service.verify_token(access_token)
         if not token_payload:
             return RedirectResponse(url="/web/login", status_code=303)
-        
+
         user_id = token_payload.get("sub")
-        
+
         # Purchase credits
         success, message = await user_service.purchase_credits(user_id, package_id)
-        
+
         if not success:
             return RedirectResponse(url=f"/web/dashboard?error={message}", status_code=303)
-        
+
         # Get updated credits for success page
         user_credits = await user_service.get_user_credits(user_id)
-        
+
         return templates.TemplateResponse("purchase_success.html", {
             "request": request,
             "message": message,
             "credits": user_credits
         })
-        
+
     except Exception as e:
         logger.error(f"Error processing credit purchase: {str(e)}")
         return RedirectResponse(url="/web/dashboard?error=Purchase failed", status_code=303)

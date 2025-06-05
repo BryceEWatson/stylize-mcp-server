@@ -11,7 +11,7 @@ class StyleService:
 
     def __init__(self, styles_file_path: str = None):
         """Initialize the StyleService.
-        
+
         Args:
             styles_file_path: Path to the styles.json file. If None, uses the default path.
         """
@@ -22,7 +22,7 @@ class StyleService:
 
     def _load_styles(self) -> None:
         """Load styles from the styles.json file.
-        
+
         Raises:
             FileNotFoundError: If the styles file doesn't exist.
             json.JSONDecodeError: If the styles file contains invalid JSON.
@@ -46,7 +46,7 @@ class StyleService:
 
     def get_all_styles(self) -> list[dict]:
         """Get all available styles.
-        
+
         Returns:
             List of style objects.
         """
@@ -54,10 +54,10 @@ class StyleService:
 
     def is_valid_style_id(self, style_id: str) -> bool:
         """Check if a style ID exists in the catalog.
-        
+
         Args:
             style_id: The style ID to validate.
-            
+
         Returns:
             True if the style ID exists, False otherwise.
         """
@@ -65,7 +65,7 @@ class StyleService:
 
     def get_available_style_ids(self) -> list[str]:
         """Get a list of all available style IDs.
-        
+
         Returns:
             List of style IDs.
         """
@@ -73,10 +73,10 @@ class StyleService:
 
     def get_style_by_id(self, style_id: str) -> dict | None:
         """Get a style by its ID.
-        
+
         Args:
             style_id: The style ID to retrieve.
-            
+
         Returns:
             The style dictionary if the style ID exists, None otherwise.
         """

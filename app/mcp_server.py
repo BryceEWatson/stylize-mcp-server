@@ -117,7 +117,7 @@ async def stylize_image(
     session_id: str | None = None
 ) -> dict[str, str]:
     """Stylize an image with the specified style or generate 4 random styles.
-    
+
     Args:
         image_base64: Base64 encoded image data
         style_id: ID of the style to apply (e.g., 'van_gogh', 'pixel_art'). If not provided, generates 4 random styles.
@@ -125,19 +125,19 @@ async def stylize_image(
         project_context: Optional context with brand colors, mood, etc.
         api_key: API key for authentication (if provided, skips trial)
         session_id: Trial session ID for anonymous usage (if no api_key)
-        
+
     Returns:
         Dictionary with:
         For single style (when style_id provided):
         - stylized_image_url: URL of the stylized image
         - style_applied: The style that was applied
         - prompt_used: The final prompt used for generation
-        
+
         For multiple styles (when style_id not provided):
         - multiple_styles: True
         - images: Array of objects with style_id, style_name, stylized_image_url, prompt_used
         - total_images: Number of images generated
-        
+
         For all modes:
         - trial_info: Trial usage information (for anonymous users)
         - upgrade_options: Available packages (if trial expired)
@@ -328,10 +328,10 @@ async def stylize_image(
 @mcp.tool()
 async def list_styles(api_key: str | None = None) -> list[dict[str, str]]:
     """List all available styles for image transformation.
-    
+
     Args:
         api_key: API key for authentication
-    
+
     Returns:
         List of style dictionaries with id, name, and description
     """
@@ -359,11 +359,11 @@ async def list_styles(api_key: str | None = None) -> list[dict[str, str]]:
 @mcp.tool()
 async def get_style_details(style_id: str, api_key: str | None = None) -> dict[str, Any]:
     """Get detailed information about a specific style.
-    
+
     Args:
         style_id: The ID of the style to get details for
         api_key: API key for authentication
-        
+
     Returns:
         Style details including id, name, description, and example prompt
     """
@@ -398,20 +398,20 @@ async def generate_image_from_text(
     api_key: str | None = None
 ) -> dict[str, str]:
     """Generate an image from text description with the specified style or 4 random styles.
-    
+
     Args:
         prompt: Text description of the image to generate
         style_id: ID of the style to apply. If not provided, generates 4 random styles.
         project_context: Optional context with brand colors, mood, etc.
         api_key: API key for authentication
-        
+
     Returns:
         Dictionary with:
         For single style (when style_id provided):
         - generated_image_url: URL of the generated image
         - style_applied: The style that was applied
         - prompt_used: The final prompt used for generation
-        
+
         For multiple styles (when style_id not provided):
         - multiple_styles: True
         - images: Array of objects with style_id, style_name, generated_image_url, prompt_used
@@ -520,7 +520,7 @@ async def generate_image_from_text(
 @mcp.tool()
 async def start_trial_session() -> dict[str, Any]:
     """Start a new trial session for anonymous users.
-    
+
     Returns:
         Dictionary with:
         - session_id: Trial session identifier
@@ -562,10 +562,10 @@ async def start_trial_session() -> dict[str, Any]:
 @mcp.tool()
 async def check_trial_status(session_id: str) -> dict[str, Any]:
     """Check the status of a trial session.
-    
+
     Args:
         session_id: Trial session identifier
-        
+
     Returns:
         Dictionary with trial usage information and upgrade options
     """
@@ -604,10 +604,10 @@ async def check_trial_status(session_id: str) -> dict[str, Any]:
 # @mcp.resource("styles://catalog")
 async def styles_catalog(api_key: str | None = None) -> str:
     """Provide the complete styles catalog as a resource.
-    
+
     Args:
         api_key: API key for authentication
-    
+
     Returns:
         JSON string containing all available styles
     """

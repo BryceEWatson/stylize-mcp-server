@@ -37,14 +37,14 @@ class GcsService:
 
     def __init__(self):
         """Initialize the GCS service.
-        
+
         The service will use Application Default Credentials (ADC) when running
         on Google Cloud Platform. For local development, ensure you have set up
         ADC via gcloud CLI (gcloud auth application-default login).
-        
+
         For signed URL generation on Cloud Run, we use impersonated credentials
         to work around the token-only credential limitation.
-        
+
         Bucket names are derived from environment variables or constructed using
         the project ID if not explicitly set.
         """
@@ -79,7 +79,7 @@ class GcsService:
 
     def _setup_signing_credentials(self):
         """Set up credentials for signed URL generation.
-        
+
         On Cloud Run with a service account, we can use the default credentials directly.
         For local development, we try to use the default credentials.
         """
@@ -132,13 +132,13 @@ class GcsService:
     async def upload_image(self, bucket_name: str, destination_blob_name: str,
                            image_bytes: bytes, content_type: str) -> None:
         """Upload an image to a GCS bucket.
-        
+
         Args:
             bucket_name: Name of the GCS bucket
             destination_blob_name: Name/path of the destination blob in the bucket
             image_bytes: Image data to upload
             content_type: MIME type of the image (e.g., 'image/png', 'image/jpeg')
-            
+
         Raises:
             GcsBucketNotFoundError: If the bucket does not exist
             GcsUploadError: If the upload fails
@@ -184,15 +184,15 @@ class GcsService:
     async def generate_signed_url(self, bucket_name: str, blob_name: str,
                                   expiration_hours: int = 1) -> str:
         """Generate a signed URL for a blob in a GCS bucket.
-        
+
         Args:
             bucket_name: Name of the GCS bucket
             blob_name: Name/path of the blob in the bucket
             expiration_hours: Number of hours until the signed URL expires (default: 1)
-            
+
         Returns:
             str: The generated signed URL
-            
+
         Raises:
             GcsBucketNotFoundError: If the bucket does not exist
             GcsSignedUrlError: If generating the signed URL fails

@@ -3,13 +3,13 @@ Configuration management for security and abuse prevention features.
 """
 
 import os
-from typing import Optional
+
 from app.models import SecurityConfig
 
 
 def load_security_config() -> SecurityConfig:
     """Load security configuration from environment variables."""
-    
+
     return SecurityConfig(
         # Feature toggles
         fingerprinting_enabled=_get_bool_env('FINGERPRINTING_ENABLED', True),
@@ -18,21 +18,21 @@ def load_security_config() -> SecurityConfig:
         captcha_enabled=_get_bool_env('CAPTCHA_ENABLED', True),
         rate_limiting_enabled=_get_bool_env('RATE_LIMITING_ENABLED', True),
         abuse_monitoring_enabled=_get_bool_env('ABUSE_MONITORING_ENABLED', True),
-        
+
         # Risk thresholds
         high_risk_threshold=_get_float_env('HIGH_RISK_THRESHOLD', 0.7),
         captcha_threshold=_get_float_env('CAPTCHA_THRESHOLD', 0.5),
         block_threshold=_get_float_env('BLOCK_THRESHOLD', 0.9),
-        
+
         # Rate limits
         trial_creation_per_ip_per_hour=_get_int_env('TRIAL_CREATION_PER_IP_PER_HOUR', 3),
         trial_creation_per_fingerprint_per_hour=_get_int_env('TRIAL_CREATION_PER_FINGERPRINT_PER_HOUR', 1),
         image_generation_per_minute=_get_int_env('IMAGE_GENERATION_PER_MINUTE', 2),
-        
+
         # VPN detection settings
         vpn_api_timeout_seconds=_get_int_env('VPN_DETECTION_TIMEOUT', 5),
         vpn_cache_duration_seconds=_get_int_env('VPN_CACHE_DURATION', 3600),
-        
+
         # Fingerprint settings
         fingerprint_uniqueness_threshold=_get_float_env('FINGERPRINT_UNIQUENESS_THRESHOLD', 0.8),
         fingerprint_spoofing_threshold=_get_float_env('FINGERPRINT_SPOOFING_THRESHOLD', 0.6)
@@ -100,12 +100,12 @@ def get_monitoring_config() -> dict:
     }
 
 
-def get_redis_config() -> Optional[dict]:
+def get_redis_config() -> dict | None:
     """Get Redis configuration if available."""
     redis_url = os.getenv('REDIS_URL')
     if not redis_url:
         return None
-    
+
     return {
         'url': redis_url,
         'password': os.getenv('REDIS_PASSWORD'),
@@ -113,7 +113,7 @@ def get_redis_config() -> Optional[dict]:
     }
 
 
-def get_geoip_config() -> Optional[str]:
+def get_geoip_config() -> str | None:
     """Get GeoIP database path if configured."""
     path = os.getenv('GEOIP_DATABASE_PATH')
     if path and os.path.exists(path):

@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 
 class ProjectContext(BaseModel):
     """Model representing the structured project context information.
-    
+
     This model captures structured contextual information about a project that will be
     analyzed by the server to refine image generation prompts.
     """
@@ -238,7 +238,7 @@ class TrialSession(BaseModel):
     session_id: str = Field(..., description="Unique session identifier")
     ip_address: str = Field(..., description="User's IP address")
     user_agent: str | None = Field(None, description="User agent string")
-    
+
     # Fingerprinting fields
     device_fingerprint: str | None = Field(None, description="Server-side device fingerprint")
     client_fingerprint: str | None = Field(None, description="Client-side fingerprint hash")
@@ -246,7 +246,7 @@ class TrialSession(BaseModel):
     webgl_fingerprint: str | None = Field(None, description="WebGL fingerprint (first 32 chars)")
     screen_resolution: str | None = Field(None, description="Screen resolution")
     timezone_offset: int | None = Field(None, description="Timezone offset in minutes")
-    
+
     # Usage tracking
     images_used: int = Field(0, description="Number of images generated in this session")
     max_images: int = Field(5, description="Maximum images allowed for trial")
@@ -254,7 +254,7 @@ class TrialSession(BaseModel):
     last_used_at: str | None = Field(None, description="Last usage timestamp")
     is_expired: bool = Field(False, description="Whether the trial has expired")
     converted_to_user_id: str | None = Field(None, description="User ID if converted to account")
-    
+
     # Abuse prevention fields
     risk_score: float = Field(0.0, description="Calculated risk score (0.0-1.0)")
     is_flagged: bool = Field(False, description="Whether session is flagged as suspicious")
@@ -262,7 +262,7 @@ class TrialSession(BaseModel):
     verification_challenges_passed: int = Field(0, description="Number of CAPTCHA/challenges passed")
     request_timestamps: list[float] = Field(default_factory=list, description="Request timing history")
     creation_timestamp: float = Field(..., description="Unix timestamp of session creation")
-    
+
     # VPN/Proxy detection
     is_vpn_detected: bool = Field(False, description="Whether VPN/proxy was detected")
     vpn_confidence: float = Field(0.0, description="VPN detection confidence (0.0-1.0)")
@@ -395,21 +395,21 @@ class SecurityConfig(BaseModel):
     captcha_enabled: bool = Field(True, description="Enable CAPTCHA challenges")
     rate_limiting_enabled: bool = Field(True, description="Enable rate limiting")
     abuse_monitoring_enabled: bool = Field(True, description="Enable abuse monitoring")
-    
+
     # Thresholds
     high_risk_threshold: float = Field(0.7, description="Threshold for high-risk classification")
     captcha_threshold: float = Field(0.5, description="Risk score threshold for CAPTCHA")
     block_threshold: float = Field(0.9, description="Risk score threshold for blocking")
-    
+
     # Rate limits
     trial_creation_per_ip_per_hour: int = Field(3, description="Trial sessions per IP per hour")
     trial_creation_per_fingerprint_per_hour: int = Field(1, description="Trial sessions per fingerprint per hour")
     image_generation_per_minute: int = Field(2, description="Image generations per minute")
-    
+
     # VPN detection settings
     vpn_api_timeout_seconds: int = Field(5, description="VPN API timeout")
     vpn_cache_duration_seconds: int = Field(3600, description="VPN detection cache duration")
-    
+
     # Fingerprint settings
     fingerprint_uniqueness_threshold: float = Field(0.8, description="Threshold for fingerprint uniqueness")
     fingerprint_spoofing_threshold: float = Field(0.6, description="Threshold for fingerprint spoofing detection")

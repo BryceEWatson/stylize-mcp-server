@@ -30,7 +30,7 @@ class UserService:
         """Initialize the user service."""
         self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
         self.project_id = os.environ.get("GCP_PROJECT_ID")
-        
+
         if not self.project_id:
             logger.warning("GCP_PROJECT_ID environment variable not set - user service will be limited")
 
@@ -238,7 +238,7 @@ class UserService:
 
     async def increment_user_usage(self, user_id: str, count: int = 1) -> bool:
         """Increment user's monthly usage count.
-        
+
         Args:
             user_id: The user's ID
             count: Number of images to increment by (default 1)
@@ -281,7 +281,7 @@ class UserService:
 
     async def check_usage_limits(self, user_id: str, requested_count: int = 1) -> tuple[bool, str]:
         """Check if user has exceeded their usage limits.
-        
+
         Args:
             user_id: The user's ID
             requested_count: Number of images being requested (default 1)
@@ -381,7 +381,7 @@ class UserService:
             from app.trial_service import TrialService
             trial_service = TrialService()
             package = trial_service.get_credit_package(package_id)
-            
+
             if not package:
                 return False, f"Invalid package ID: {package_id}"
 
