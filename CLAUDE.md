@@ -744,3 +744,192 @@ class MCPImageClient:
 - Run tests before committing: `pytest`
 - Format code before committing: `black app/ tests/`
 - Fix linting issues: `ruff check --fix app/ tests/`
+
+## 🧪 End-to-End Testing
+
+### Running E2E Tests
+
+The project includes comprehensive E2E tests covering all user flows across Web UI, REST API, and MCP interfaces.
+
+#### Quick Commands
+```bash
+# Run all E2E tests
+./scripts/run-e2e-tests.sh
+
+# Run specific test suite
+./scripts/run-e2e-tests.sh trial_journey
+./scripts/run-e2e-tests.sh mcp_integration
+./scripts/run-e2e-tests.sh credit_system
+./scripts/run-e2e-tests.sh cross_interface
+./scripts/run-e2e-tests.sh security
+./scripts/run-e2e-tests.sh performance
+
+# Run with Firefox
+./scripts/run-e2e-tests.sh all firefox
+
+# Run with visible browser (for debugging)
+E2E_HEADLESS=false ./scripts/run-e2e-tests.sh trial_journey
+
+# Skip cleanup (for debugging)
+E2E_CLEANUP=false ./scripts/run-e2e-tests.sh mcp_integration
+```
+
+#### Manual Docker Compose
+```bash
+# Start all services and run tests
+docker-compose -f docker-compose.e2e.yml up --build
+
+# Run specific test file
+pytest tests/e2e/test_trial_user_journey.py -v
+
+# Run with markers
+pytest tests/e2e/ -m "integration and not slow" -v
+pytest tests/e2e/ -m "security" -v
+pytest tests/e2e/ -m "performance" -v
+```
+
+### CI/CD Integration
+
+#### Automatic E2E Testing
+E2E tests run automatically in CI:
+
+- **On PRs with "run-e2e" label** - Core E2E tests
+- **On PRs that modify E2E-related files** - Full E2E test suite via separate workflow
+- **Manual workflow dispatch** - On-demand testing with configurable options
+
+#### Manual CI Triggers
+```bash
+# Add label to PR to trigger E2E tests
+gh pr edit --add-label "run-e2e"
+
+# Or manually trigger via GitHub Actions UI
+# Workflow: "E2E Tests" with options for test suite and browser
+```
+
+### Test Coverage
+
+#### Core Test Suites
+1. **Trial User Journey** (`test_trial_user_journey.py`)
+   - Anonymous trial session flow
+   - Image generation limits and enforcement
+   - Multi-style generation usage counting
+   - Trial-to-account conversion
+
+2. **MCP AI Integration** (`test_mcp_ai_integration.py`)
+   - Complete MCP tool workflow
+   - API key vs trial authentication
+   - Error handling and recovery
+   - Performance benchmarks
+
+3. **Credit System** (`test_credit_system.py`)
+   - Credit package display and purchase
+   - Usage tracking across interfaces
+   - Dashboard functionality
+   - Payment flow testing
+
+4. **Cross-Interface Integration** (`test_cross_interface_integration.py`)
+   - Web UI ↔ API ↔ MCP integration
+   - Session persistence across interfaces
+   - Data consistency validation
+   - Authentication flow testing
+
+5. **Security Features** (`test_security_features.py`)
+   - Trial abuse prevention
+   - Rate limiting behavior
+   - Content policy enforcement
+   - Authentication security
+
+6. **Performance** (`test_performance.py`)
+   - Concurrent user simulation
+   - Response time benchmarks
+   - Load testing
+   - Resource usage validation
+
+7. **Error Scenarios** (`test_error_scenarios.py`)
+   - Service failure handling
+   - Malformed request processing
+   - Edge cases and boundary conditions
+   - Recovery mechanisms
+
+### Test Environment Configuration
+
+#### Environment Variables
+```bash
+# Test environment
+E2E_ENVIRONMENT=local          # local, staging, production
+E2E_BASE_URL=http://localhost:8080
+E2E_BROWSER=chrome            # chrome, firefox
+E2E_HEADLESS=true            # true, false
+
+# Authentication
+E2E_TEST_API_KEY=test-key-123
+E2E_OPENAI_API_KEY=sk-...    # For real API integration tests
+
+# Test execution
+E2E_PARALLEL_TESTS=true
+E2E_MAX_RETRIES=2
+E2E_TEST_TIMEOUT=300
+
+# Security testing
+E2E_TEST_SECURITY=true
+E2E_RATE_LIMIT_TEST=true
+```
+
+#### Docker Services
+The E2E environment includes:
+- **Application** with test configuration
+- **Firestore emulator** for database operations
+- **GCS emulator** for file storage
+- **Redis** for caching
+- **Selenium Grid** for browser automation
+
+### Debugging E2E Tests
+
+#### Common Issues
+```bash
+# Service startup problems
+docker-compose -f docker-compose.e2e.yml logs app
+
+# Selenium connection issues
+curl http://localhost:4444/wd/hub/status
+
+# Clean restart
+docker-compose -f docker-compose.e2e.yml down -v
+```
+
+#### Debug Mode
+```bash
+# Run with visible browser
+E2E_HEADLESS=false pytest tests/e2e/test_trial_user_journey.py::TestTrialUserJourney::test_complete_trial_to_conversion_flow -v -s
+
+# Generate detailed reports
+pytest tests/e2e/ --html=reports/debug-report.html --self-contained-html -v
+```
+
+#### VNC Access (for debugging)
+```bash
+# Access running browser via VNC (password: secret)
+vncviewer localhost:5900  # Chrome
+vncviewer localhost:5901  # Firefox
+```
+
+### Performance Benchmarks
+
+#### Expected Metrics
+- **Single image generation**: < 30 seconds (95th percentile)
+- **Multi-style generation**: < 45 seconds for 4 images (95th percentile)
+- **Web UI page load**: < 3 seconds (95th percentile)
+- **Concurrent users**: Support 5+ concurrent generations
+- **API response time**: < 5 seconds for metadata endpoints
+
+#### Monitoring
+```bash
+# Run performance tests specifically
+pytest tests/e2e/test_performance.py -v -m "performance"
+
+# Monitor resource usage during tests
+docker stats
+
+# Check test execution time trends
+pytest tests/e2e/ --durations=10
+```

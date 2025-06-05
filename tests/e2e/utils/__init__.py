@@ -1,0 +1,3 @@
+"""
+E2E test utilities package.
+"""

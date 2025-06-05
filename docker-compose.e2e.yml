@@ -1,0 +1,222 @@
+version: '3.8'
+
+services:
+  # Main application for E2E testing
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      # Application settings
+      - ENVIRONMENT=e2e_local
+      - PORT=8080
+      - HOST=0.0.0.0
+      
+      # Authentication settings
+      - AUTH_ENABLED=true
+      - AUTH_DEV_BYPASS=false
+      - DEV_API_KEY=e2e-test-key-12345
+      
+      # Security settings (disabled for E2E tests)
+      - SECURITY_ENABLED=false
+      - HIGH_RISK_THRESHOLD=0.9
+      - FINGERPRINTING_ENABLED=false
+      - VPN_DETECTION_PAID_APIS=false
+      
+      # Rate limiting (relaxed for E2E tests)
+      - TRIAL_CREATION_PER_IP=20
+      - TRIAL_CREATION_PER_DEVICE=10
+      - IMAGE_GENERATION_PER_SESSION=10
+      - GLOBAL_DAILY_LIMIT=1000
+      
+      # OpenAI settings (use test key if provided)
+      - OPENAI_API_KEY=${E2E_OPENAI_API_KEY:-}
+      
+      # Firestore emulator
+      - FIRESTORE_EMULATOR_HOST=firestore-emulator:8081
+      - GOOGLE_CLOUD_PROJECT=e2e-test-project
+      
+      # GCS emulator (use fake-gcs-server)
+      - GCS_EMULATOR_HOST=gcs-emulator:4443
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/fake-credentials.json
+      
+      # Redis (optional for caching tests)
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      
+      # Test-specific settings
+      - E2E_TEST_MODE=true
+      - LOG_LEVEL=DEBUG
+      
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./tests/e2e/data:/app/test_data
+      - ./fake-credentials.json:/app/fake-credentials.json
+    depends_on:
+      - firestore-emulator
+      - gcs-emulator
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Firestore emulator for database operations
+  firestore-emulator:
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:emulators
+    command: >
+      sh -c "gcloud config set project e2e-test-project &&
+             gcloud beta emulators firestore start --host-port=0.0.0.0:8081"
+    ports:
+      - "8081:8081"
+    environment:
+      - CLOUDSDK_CORE_PROJECT=e2e-test-project
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # GCS emulator for file storage
+  gcs-emulator:
+    image: fsouza/fake-gcs-server:latest
+    command: >
+      -scheme http
+      -host 0.0.0.0
+      -port 4443
+      -public-host gcs-emulator:4443
+    ports:
+      - "4443:4443"
+    volumes:
+      - gcs_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4443/storage/v1/b"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # Redis for caching (optional)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Selenium Chrome for web UI testing
+  selenium-chrome:
+    image: selenium/standalone-chrome:latest
+    ports:
+      - "4444:4444"
+      - "5900:5900"  # VNC port for debugging
+    environment:
+      - SE_OPTS=--log-level INFO
+      - SE_NODE_MAX_SESSIONS=3
+      - SE_NODE_SESSION_TIMEOUT=300
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=true
+    volumes:
+      - /dev/shm:/dev/shm
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4444/wd/hub/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Selenium Firefox for cross-browser testing
+  selenium-firefox:
+    image: selenium/standalone-firefox:latest
+    ports:
+      - "4445:4444"
+      - "5901:5900"  # VNC port for debugging
+    environment:
+      - SE_OPTS=--log-level INFO
+      - SE_NODE_MAX_SESSIONS=3
+      - SE_NODE_SESSION_TIMEOUT=300
+    volumes:
+      - /dev/shm:/dev/shm
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4444/wd/hub/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Test runner service
+  e2e-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    environment:
+      # E2E test configuration
+      - E2E_ENVIRONMENT=e2e_local
+      - E2E_BASE_URL=http://app:8080
+      - E2E_BROWSER=chrome
+      - E2E_HEADLESS=true
+      - E2E_SELENIUM_HUB_URL=http://selenium-chrome:4444/wd/hub
+      - E2E_SELENIUM_GRID=true
+      
+      # Test data settings
+      - E2E_GENERATE_TEST_DATA=true
+      - E2E_TEST_IMAGES_DIR=/app/tests/e2e/data/images
+      
+      # API testing settings
+      - E2E_API_TIMEOUT=60
+      - E2E_TEST_API_KEY=e2e-test-key-12345
+      
+      # OpenAI testing (optional)
+      - E2E_OPENAI_API_KEY=${E2E_OPENAI_API_KEY:-}
+      - E2E_OPENAI_QUOTA_LIMIT=20
+      
+      # Performance testing
+      - E2E_MAX_RESPONSE_TIME=30
+      - E2E_CONCURRENT_USERS=3
+      
+      # Security testing
+      - E2E_TEST_SECURITY=true
+      - E2E_RATE_LIMIT_TEST=true
+      
+      # Test execution
+      - E2E_PARALLEL_TESTS=true
+      - E2E_TEST_TIMEOUT=300
+      - E2E_RETRY_FAILED_TESTS=true
+      - E2E_MAX_RETRIES=2
+      
+      # Reporting
+      - E2E_HTML_REPORT_PATH=/app/tests/e2e/reports/report.html
+      - E2E_JSON_REPORT_PATH=/app/tests/e2e/reports/report.json
+      
+    volumes:
+      - .:/app
+      - e2e_reports:/app/tests/e2e/reports
+    working_dir: /app
+    depends_on:
+      app:
+        condition: service_healthy
+      selenium-chrome:
+        condition: service_healthy
+      firestore-emulator:
+        condition: service_healthy
+      gcs-emulator:
+        condition: service_healthy
+    profiles:
+      - test  # Only start when explicitly requested
+
+volumes:
+  gcs_data:
+    driver: local
+  e2e_reports:
+    driver: local
+
+networks:
+  default:
+    driver: bridge

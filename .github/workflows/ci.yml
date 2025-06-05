@@ -122,3 +122,101 @@ jobs:
       if: always()
       with:
         sarif_file: 'trivy-results.sarif'
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: [test, docker]
+    # Only run E2E tests when explicitly requested via PR label
+    if: contains(github.event.pull_request.labels.*.name, 'run-e2e')
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        test-suite: ["trial_journey", "mcp_integration", "cross_interface"]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install E2E dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-e2e.txt
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Create fake credentials
+      run: echo '{}' > fake-credentials.json
+
+    - name: Start test services
+      run: |
+        docker-compose -f docker-compose.e2e.yml up -d firestore-emulator gcs-emulator redis selenium-chrome
+        
+        # Wait for services
+        timeout=60
+        while [ $timeout -gt 0 ]; do
+          if curl -f http://localhost:8081 >/dev/null 2>&1 && \
+             curl -f http://localhost:4443/storage/v1/b >/dev/null 2>&1 && \
+             curl -f http://localhost:4444/wd/hub/status >/dev/null 2>&1; then
+            echo "Services ready"
+            break
+          fi
+          sleep 2
+          timeout=$((timeout - 2))
+        done
+
+    - name: Start application
+      run: |
+        docker-compose -f docker-compose.e2e.yml up -d app
+        
+        # Wait for app
+        timeout=60
+        while [ $timeout -gt 0 ]; do
+          if curl -f http://localhost:8080/health >/dev/null 2>&1; then
+            echo "Application ready"
+            break
+          fi
+          sleep 2
+          timeout=$((timeout - 2))
+        done
+
+    - name: Run E2E tests
+      env:
+        E2E_BASE_URL: http://localhost:8080
+        E2E_BROWSER: chrome
+        E2E_HEADLESS: true
+        E2E_SELENIUM_GRID: true
+        E2E_SELENIUM_HUB_URL: http://localhost:4444/wd/hub
+        E2E_TEST_API_KEY: e2e-test-key-12345
+      run: |
+        TEST_FILE="tests/e2e/test_${{ matrix.test-suite }}.py"
+        if [ "${{ matrix.test-suite }}" = "trial_journey" ]; then
+          TEST_FILE="tests/e2e/test_trial_user_journey.py"
+        elif [ "${{ matrix.test-suite }}" = "mcp_integration" ]; then
+          TEST_FILE="tests/e2e/test_mcp_ai_integration.py"
+        elif [ "${{ matrix.test-suite }}" = "cross_interface" ]; then
+          TEST_FILE="tests/e2e/test_cross_interface_integration.py"
+        fi
+        
+        pytest $TEST_FILE -v --tb=short -m "not slow" \
+          --html=tests/e2e/reports/report-${{ matrix.test-suite }}.html \
+          --self-contained-html
+
+    - name: Upload E2E test reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: e2e-reports-${{ matrix.test-suite }}
+        path: tests/e2e/reports/
+        retention-days: 7
+
+    - name: Clean up
+      if: always()
+      run: docker-compose -f docker-compose.e2e.yml down -v
