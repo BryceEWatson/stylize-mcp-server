@@ -67,7 +67,7 @@ class TestOpenAIService(unittest.TestCase):
         mock_response.payload.data = b'secret_api_key'
         mock_secret_instance.access_secret_version.return_value = mock_response
 
-        service = OpenAIService()
+        OpenAIService()  # Initialize service to test secret manager call
 
         # Verify that the secret manager client was called correctly
         mock_secret_instance.access_secret_version.assert_called_once_with(

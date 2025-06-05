@@ -1,11 +1,10 @@
 """
 E2E test configuration management.
 """
-import os
 from enum import Enum
+
 from pydantic import Field
 from pydantic_settings import BaseSettings
-from typing import Optional
 
 
 class TestEnvironment(str, Enum):
@@ -17,57 +16,57 @@ class TestEnvironment(str, Enum):
 
 class E2ETestConfig(BaseSettings):
     """Configuration for E2E tests."""
-    
+
     # Environment settings
     environment: TestEnvironment = Field(default=TestEnvironment.LOCAL, env="E2E_ENVIRONMENT")
-    
+
     # Application URLs
     base_url: str = Field(default="http://localhost:8080", env="E2E_BASE_URL")
-    
+
     # Browser settings
     browser: str = Field(default="chrome", env="E2E_BROWSER")
     headless: bool = Field(default=True, env="E2E_HEADLESS")
     implicit_wait: int = Field(default=10, env="E2E_IMPLICIT_WAIT")
     page_load_timeout: int = Field(default=30, env="E2E_PAGE_LOAD_TIMEOUT")
-    
+
     # Selenium settings
-    selenium_hub_url: Optional[str] = Field(default=None, env="E2E_SELENIUM_HUB_URL")
+    selenium_hub_url: str | None = Field(default=None, env="E2E_SELENIUM_HUB_URL")
     selenium_grid: bool = Field(default=False, env="E2E_SELENIUM_GRID")
-    
+
     # Test data settings
     test_images_dir: str = Field(default="tests/e2e/data/images", env="E2E_TEST_IMAGES_DIR")
     generate_test_data: bool = Field(default=True, env="E2E_GENERATE_TEST_DATA")
-    
+
     # API testing settings
     api_timeout: int = Field(default=60, env="E2E_API_TIMEOUT")
-    test_api_key: Optional[str] = Field(default=None, env="E2E_TEST_API_KEY")
-    
+    test_api_key: str | None = Field(default=None, env="E2E_TEST_API_KEY")
+
     # OpenAI testing settings (for actual API calls in E2E tests)
-    openai_api_key: Optional[str] = Field(default=None, env="E2E_OPENAI_API_KEY")
+    openai_api_key: str | None = Field(default=None, env="E2E_OPENAI_API_KEY")
     openai_test_quota_limit: int = Field(default=50, env="E2E_OPENAI_QUOTA_LIMIT")  # Daily limit for E2E tests
-    
+
     # Performance testing settings
     max_response_time_seconds: int = Field(default=30, env="E2E_MAX_RESPONSE_TIME")
     concurrent_users: int = Field(default=5, env="E2E_CONCURRENT_USERS")
-    
+
     # Security testing settings
     test_security_features: bool = Field(default=True, env="E2E_TEST_SECURITY")
     rate_limit_test_enabled: bool = Field(default=True, env="E2E_RATE_LIMIT_TEST")
-    
+
     # Firestore emulator settings (for local testing)
     firestore_emulator_host: str = Field(default="localhost:8081", env="FIRESTORE_EMULATOR_HOST")
     use_firestore_emulator: bool = Field(default=False, env="E2E_USE_FIRESTORE_EMULATOR")
-    
+
     # Test reporting
     html_report_path: str = Field(default="tests/e2e/reports/report.html", env="E2E_HTML_REPORT_PATH")
     json_report_path: str = Field(default="tests/e2e/reports/report.json", env="E2E_JSON_REPORT_PATH")
-    
+
     # Test execution settings
     parallel_tests: bool = Field(default=True, env="E2E_PARALLEL_TESTS")
     test_timeout: int = Field(default=300, env="E2E_TEST_TIMEOUT")  # 5 minutes per test
     retry_failed_tests: bool = Field(default=True, env="E2E_RETRY_FAILED_TESTS")
     max_retries: int = Field(default=2, env="E2E_MAX_RETRIES")
-    
+
     class Config:
         env_prefix = "E2E_"
         case_sensitive = False
@@ -119,7 +118,7 @@ def get_browser_options(browser_name: str) -> dict:
         "implicit_wait": config.implicit_wait,
         "page_load_timeout": config.page_load_timeout
     }
-    
+
     if browser_name.lower() == "chrome":
         options.update({
             "chrome_options": [
@@ -136,5 +135,5 @@ def get_browser_options(browser_name: str) -> dict:
                 "--height=1080"
             ]
         })
-    
+
     return options

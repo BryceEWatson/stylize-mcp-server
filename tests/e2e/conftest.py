@@ -2,23 +2,26 @@
 Pytest configuration and fixtures for E2E tests.
 """
 import asyncio
-import pytest
+import shutil
+import tempfile
+
 import httpx
+import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.firefox import GeckoDriverManager
-from fastmcp import Client as FastMCPClient
-import os
-import tempfile
-import shutil
-from typing import AsyncGenerator, Generator, Dict, Any
 
-from tests.e2e.config import get_test_config, get_base_url, get_api_base_url, get_browser_options
-from tests.e2e.utils.test_data_manager import TestDataManager
+from tests.e2e.config import (
+    get_api_base_url,
+    get_base_url,
+    get_browser_options,
+    get_test_config,
+)
 from tests.e2e.utils.api_client import E2EAPIClient
 from tests.e2e.utils.mcp_client import E2EMCPClient
+from tests.e2e.utils.test_data_manager import TestDataManager
 
 
 @pytest.fixture(scope="session")
@@ -33,7 +36,7 @@ def test_data_manager():
     return TestDataManager()
 
 
-@pytest.fixture(scope="session") 
+@pytest.fixture(scope="session")
 def temp_test_dir():
     """Create temporary directory for test files."""
     temp_dir = tempfile.mkdtemp(prefix="e2e_test_")
@@ -52,36 +55,36 @@ def browser_options(test_config):
 def webdriver_instance(test_config, browser_options):
     """Create WebDriver instance for browser testing."""
     browser_name = test_config.browser.lower()
-    
+
     if browser_name == "chrome":
         options = webdriver.ChromeOptions()
         if browser_options["headless"]:
             options.add_argument("--headless")
         for option in browser_options.get("chrome_options", []):
             options.add_argument(option)
-        
+
         service = ChromeService(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
-    
+
     elif browser_name == "firefox":
         options = webdriver.FirefoxOptions()
         if browser_options["headless"]:
             options.add_argument("--headless")
         for option in browser_options.get("firefox_options", []):
             options.add_argument(option)
-            
+
         service = FirefoxService(GeckoDriverManager().install())
         driver = webdriver.Firefox(service=service, options=options)
-    
+
     else:
         raise ValueError(f"Unsupported browser: {browser_name}")
-    
+
     # Configure timeouts
     driver.implicitly_wait(browser_options["implicit_wait"])
     driver.set_page_load_timeout(browser_options["page_load_timeout"])
-    
+
     yield driver
-    
+
     # Cleanup
     driver.quit()
 
@@ -95,7 +98,7 @@ async def http_client():
         yield client
 
 
-@pytest.fixture(scope="session") 
+@pytest.fixture(scope="session")
 async def api_client(test_config):
     """Provide E2E API client."""
     client = E2EAPIClient(
@@ -132,26 +135,26 @@ async def trial_session(api_client):
 async def test_user(api_client, test_data_manager):
     """Create a test user account."""
     user_data = test_data_manager.get_test_user_data()
-    
+
     # Create trial session first
     trial_response = await api_client.start_trial_session()
     trial_data = trial_response.json()
-    
+
     # Convert trial to user account
     conversion_data = {
         "session_id": trial_data["session_id"],
         **user_data
     }
-    
+
     response = await api_client.convert_trial_to_user(conversion_data)
     user_account = response.json()
-    
+
     yield {
         "user_data": user_data,
         "account_data": user_account,
         "trial_data": trial_data
     }
-    
+
     # Cleanup user account if needed
 
 
@@ -159,13 +162,13 @@ async def test_user(api_client, test_data_manager):
 async def authenticated_api_client(test_user, test_config):
     """Provide API client authenticated with test user."""
     user_account = test_user["account_data"]
-    
+
     client = E2EAPIClient(
         base_url=get_api_base_url(),
         timeout=test_config.api_timeout,
         jwt_token=user_account.get("access_token")
     )
-    
+
     yield client
     await client.close()
 
@@ -177,7 +180,7 @@ def test_images(test_data_manager):
     return test_data_manager.get_test_images()
 
 
-@pytest.fixture(scope="session") 
+@pytest.fixture(scope="session")
 def project_contexts(test_data_manager):
     """Provide test project contexts."""
     return test_data_manager.get_project_contexts()
@@ -206,12 +209,12 @@ def performance_metrics():
         "memory_usage": [],
         "api_calls": []
     }
-    
+
     import time
     metrics["start_time"] = time.time()
-    
+
     yield metrics
-    
+
     metrics["end_time"] = time.time()
     metrics["total_duration"] = metrics["end_time"] - metrics["start_time"]
 
@@ -222,17 +225,17 @@ def mock_openai_failure(monkeypatch):
     """Mock OpenAI API failure for error testing."""
     def mock_openai_error(*args, **kwargs):
         raise Exception("Simulated OpenAI API failure")
-    
+
     monkeypatch.setattr("app.openai_service.generate_image", mock_openai_error)
     yield
 
 
-@pytest.fixture(scope="function") 
+@pytest.fixture(scope="function")
 def mock_gcs_failure(monkeypatch):
     """Mock GCS failure for error testing."""
     def mock_gcs_error(*args, **kwargs):
         raise Exception("Simulated GCS failure")
-    
+
     monkeypatch.setattr("app.gcs_service.upload_image", mock_gcs_error)
     yield
 
@@ -266,13 +269,13 @@ def pytest_collection_modifyitems(config, items):
         if "test_performance" in str(item.fspath):
             item.add_marker(pytest.mark.performance)
             item.add_marker(pytest.mark.slow)
-        
+
         if "test_security" in str(item.fspath):
             item.add_marker(pytest.mark.security)
-        
+
         if "web_ui" in str(item.fspath) or "pages" in str(item.fspath):
             item.add_marker(pytest.mark.web_ui)
-        
+
         if "mcp" in str(item.fspath):
             item.add_marker(pytest.mark.mcp_only)
 
@@ -290,17 +293,17 @@ def event_loop():
 def pytest_runtest_setup(item):
     """Setup function to skip tests based on environment."""
     test_config = get_test_config()
-    
+
     # Skip OpenAI tests if no API key provided
     if item.get_closest_marker("requires_openai"):
         if not test_config.openai_api_key:
             pytest.skip("OpenAI API key not provided")
-    
+
     # Skip security tests if security testing disabled
     if item.get_closest_marker("security"):
         if not test_config.test_security_features:
             pytest.skip("Security testing disabled")
-    
+
     # Skip performance tests in some environments
     if item.get_closest_marker("performance"):
         if test_config.environment == "e2e_local":
