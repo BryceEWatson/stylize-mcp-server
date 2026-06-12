@@ -1,9 +1,11 @@
 # Stylize MCP Server
 
+> **⚠️ Dormant (June 2026):** the hosted demo has been taken offline — the live-demo links below no longer work. The codebase remains a complete, working reference for an MCP-served image service with a freemium credit system, Stripe integration, abuse controls (rate limits, fingerprinting, CAPTCHA), and a Cloud Run deploy pipeline. It can be redeployed from this repo (`cloudbuild.yaml`) at any time. Open an issue if you'd like to see it revived.
+
 [![CI/CD Pipeline](https://github.com/your-username/stylize-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/stylize-mcp/actions/workflows/ci.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Status](https://img.shields.io/badge/status-production-brightgreen.svg)](https://stylize-mcp-server-997481449751.us-central1.run.app/health)
+[![Status](https://img.shields.io/badge/status-dormant-lightgrey.svg)](#)
 
 AI-powered image stylization service with professional artistic styles, freemium trial system, and seamless AI assistant integration via Model Context Protocol (MCP).
 
