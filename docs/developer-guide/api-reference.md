@@ -10,14 +10,14 @@ The server supports multiple authentication methods:
 Include your API key in the Authorization header:
 ```bash
 curl -H "Authorization: Bearer your-api-key-here" \
-     -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize_image
+     -X POST http://localhost:8080/stylize_image
 ```
 
 ### Trial Session (Anonymous)
 Access 5 free images without registration:
 ```bash
 # No authentication needed - server automatically creates trial session
-curl -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize_image \
+curl -X POST http://localhost:8080/stylize_image \
   -F "style_id=van_gogh" \
   -F "user_prompt=a beautiful landscape"
 ```
@@ -26,7 +26,7 @@ curl -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize
 Include JWT token from login:
 ```bash
 curl -H "Authorization: Bearer jwt-token-here" \
-     -X GET https://stylize-mcp-server-997481449751.us-central1.run.app/user/profile
+     -X GET http://localhost:8080/user/profile
 ```
 
 ## Core Image Generation

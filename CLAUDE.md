@@ -21,16 +21,16 @@ uvicorn app.main:app --reload
 uvicorn app.main:app --host 0.0.0.0 --port 8080
 ```
 
-### 🆓 Freemium Trial System & Web Interface
-The server now supports **anonymous trial usage** with a complete web interface for user conversion and credit purchases!
+### Freemium Trial System & Web Interface
+The server supports anonymous trial usage, with web pages for converting a trial to an account and buying credits.
 
 #### Web Interface for Users
 ```bash
 # Trial Upgrade Web Page (users can create accounts)
-https://stylize-mcp-server-997481449751.us-central1.run.app/web/upgrade
+http://localhost:8080/web/upgrade
 
 # User Dashboard (authenticated users)
-https://stylize-mcp-server-997481449751.us-central1.run.app/web/dashboard
+http://localhost:8080/web/dashboard
 
 # Key Web Endpoints:
 # GET /web/upgrade - Trial upgrade form with session tracking
@@ -296,16 +296,16 @@ curl -H "Authorization: Bearer admin-api-key" \
 **Method 2: CLI Utility**
 ```bash
 # Create a new API key
-python manage_api_keys.py create "Production Client" --permissions stylize styles mcp
+python scripts/manage_api_keys.py create "Production Client" --permissions stylize styles mcp
 
 # List all API keys
-python manage_api_keys.py list
+python scripts/manage_api_keys.py list
 
 # Deactivate an API key
-python manage_api_keys.py deactivate key-abc123
+python scripts/manage_api_keys.py deactivate key-abc123
 
 # Show available permissions and config
-python manage_api_keys.py info
+python scripts/manage_api_keys.py info
 ```
 
 #### Using API Keys
@@ -400,21 +400,20 @@ The application is a FastAPI-based server that provides:
 5. **Two-stage image generation pipeline**:
    - Context analysis using GPT-4V when reference images are provided
    - Prompt generation and image creation using DALL·E 3
-   - Results are cached in Redis and stored in GCS
+   - Results are stored in GCS (Redis is configurable but nothing caches responses)
 
 ### Service Dependencies
 - **OpenAI API**: GPT-4V for analysis, DALL·E 3 for generation
 - **Google Cloud Storage**: Image persistence and public access
 - **Firestore**: User accounts, trial sessions, credit balances, usage tracking, and API key storage
-- **Cloud Vision API**: SafeSearch content filtering
-- **Redis (Memorystore)**: Response caching (optional, uses in-memory fallback)
+- **Cloud Vision API**: listed in requirements, but no code calls SafeSearch
+- **Redis (Memorystore)**: optional and configurable; no response caching is implemented
 - **Secret Manager**: OpenAI API key and admin credentials storage
 
 ### Key Implementation Details
 - The application supports context-aware generation through a `ProjectContext` model for brand consistency
 - **Multi-Style Generation**: When no `style_id` is provided, the system automatically generates 4 images with randomly selected styles
 - **Usage Tracking**: Multiple style generation counts as multiple image usage (4x for random styles)
-- Image generation includes automatic SafeSearch filtering for uploaded content
 - Cost controls are implemented via daily global caps and per-user quotas tracked in Firestore
 - The style catalog currently uses a JSON file (`app/styles.json`) with 5 predefined styles: van_gogh, pixel_art, flat_ui_icon, neumorphic_button, glassmorphic_card
 
@@ -436,9 +435,8 @@ The test suite covers all major components:
 - **Service Name**: `stylize-mcp-server`
 - **Region**: `us-central1`
 - **Project**: `stylize-mcp-server` (GCP project ID: 997481449751)
-- **URL**: https://stylize-mcp-server-997481449751.us-central1.run.app
-- **Current Status**: Fully operational with web interface and credit system
-- **Last Updated**: 2025-06-03 (Complete trial upgrade and credit purchase system)
+- **Status**: dormant. The hosted service was taken offline in June 2026; nothing is deployed.
+- **Last maintained**: 2025-06 (dependency versions are pinned to that date in `requirements-lock.txt`)
 
 ### Monitoring and Logs
 ```bash
@@ -449,16 +447,10 @@ gcloud logging read "resource.type=cloud_run_revision AND resource.labels.servic
 gcloud run services describe stylize-mcp-server --region=us-central1
 ```
 
-### ✅ System Status (Fully Operational + Enhanced Security)
-- **✅ Firestore Integration**: Complete user management with trial sessions and credit tracking
-- **✅ Trial System**: Anonymous users get 5 free images with seamless upgrade flow
-- **✅ Advanced Security**: Multi-layered abuse prevention with device fingerprinting, VPN detection, and behavioral analysis
-- **✅ Web Interface**: Beautiful forms for trial upgrade and credit purchase
-- **✅ Credit System**: Complete credit purchase flow with 4 pricing tiers
-- **✅ Image Generation**: Both single-style and multi-style generation working
-- **✅ Authentication**: JWT-based user auth and API key management
-- **✅ Rate Limiting**: Sophisticated multi-dimensional rate limiting with risk-based adjustment
-- **✅ GCS Integration**: All generated images publicly accessible via signed URLs
+### Known gaps (see README "Known limitations")
+- Credit purchases add credits without taking payment.
+- The abuse-prevention services never run on live traffic: they need `SECURITY_ENABLED=true` and a `request` argument that no caller passes. CAPTCHA responses are never verified on a request path.
+- If signed-URL generation fails, `GcsService.generate_signed_url` falls back to a public object URL.
 
 ### Authentication Development Notes
 - For development: Set `AUTH_DEV_BYPASS=true` and `DEV_API_KEY=test-key` to use a simple development key
@@ -677,7 +669,7 @@ result = await stylize_image(
 
 ### Authentication Flow Management
 
-#### **Seamless Trial-to-API Key Transition**
+#### **Trial-to-API Key Transition**
 ```python
 class MCPImageClient:
     def __init__(self):
@@ -725,7 +717,7 @@ class MCPImageClient:
 - Use trial limits as gentle guidance, not barriers
 
 #### **Natural Language Integration**
-- Embed tool calls seamlessly in conversation flow
+- Embed tool calls directly in the conversation flow
 - Translate technical responses into conversational language
 - Provide context and suggestions for next steps
 
@@ -777,6 +769,7 @@ E2E_CLEANUP=false ./scripts/run-e2e-tests.sh mcp_integration
 #### Manual Docker Compose
 ```bash
 # Start all services and run tests
+echo '{}' > fake-credentials.json   # placeholder the compose file mounts
 docker-compose -f docker-compose.e2e.yml up --build
 
 # Run specific test file
@@ -880,7 +873,7 @@ The E2E environment includes:
 - **Application** with test configuration
 - **Firestore emulator** for database operations
 - **GCS emulator** for file storage
-- **Redis** for caching
+- **Redis** (started for completeness; the app does not cache in it)
 - **Selenium Grid** for browser automation
 
 ### Debugging E2E Tests

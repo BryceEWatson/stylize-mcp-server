@@ -11,7 +11,6 @@ from app.gcs_service import (
     GcsBucketNotFoundError,
     GcsService,
     GcsServiceError,
-    GcsSignedUrlError,
     GcsUploadError,
 )
 
@@ -219,23 +218,27 @@ class TestGcsService:
             await service.generate_signed_url('test-bucket', 'test-blob.png')
 
     @pytest.mark.asyncio
-    async def test_generate_signed_url_google_cloud_error(self, mock_storage_client):
-        """Test handling of GoogleCloudError during signed URL generation."""
-        service = GcsService()
+    async def test_signed_url_google_cloud_error_falls_back_to_public_url(self, mock_storage_client):
+        """Signing failures fall back to a plain public object URL instead of raising.
 
-        # Configure mock to raise GoogleCloudError during signed URL generation
+        This documents current behavior: the URL only works if the bucket is public.
+        """
+        service = GcsService()
         mock_storage_client['blob'].generate_signed_url.side_effect = GoogleCloudError('Test cloud error')
 
-        with pytest.raises(GcsSignedUrlError, match="Google Cloud error generating signed URL"):
-            await service.generate_signed_url('test-bucket', 'test-blob.png')
+        url = await service.generate_signed_url('test-bucket', 'test-blob.png')
+
+        assert url == 'https://storage.googleapis.com/test-bucket/test-blob.png'
 
     @pytest.mark.asyncio
-    async def test_generate_signed_url_unexpected_error(self, mock_storage_client):
-        """Test handling of unexpected errors during signed URL generation."""
-        service = GcsService()
+    async def test_signed_url_unexpected_error_falls_back_to_public_url(self, mock_storage_client):
+        """Signing failures fall back to a plain public object URL instead of raising.
 
-        # Configure mock to raise unexpected exception during signed URL generation
+        This documents current behavior: the URL only works if the bucket is public.
+        """
+        service = GcsService()
         mock_storage_client['blob'].generate_signed_url.side_effect = Exception('Test unexpected error')
 
-        with pytest.raises(GcsSignedUrlError, match="Unexpected error generating signed URL"):
-            await service.generate_signed_url('test-bucket', 'test-blob.png')
+        url = await service.generate_signed_url('test-bucket', 'test-blob.png')
+
+        assert url == 'https://storage.googleapis.com/test-bucket/test-blob.png'

@@ -5,7 +5,7 @@ Thank you for your interest in contributing to the Stylize MCP Server! This docu
 ## 🚀 Quick Start for Contributors
 
 1. **Fork the repository**
-2. **Clone your fork**: `git clone https://github.com/your-username/stylize-mcp.git`
+2. **Clone your fork**: `git clone https://github.com/BryceEWatson/stylize-mcp-server.git`
 3. **Set up development environment**: See [Development Setup](#development-setup)
 4. **Create a feature branch**: `git checkout -b feature/amazing-feature`
 5. **Make your changes and add tests**
@@ -22,7 +22,7 @@ Thank you for your interest in contributing to the Stylize MCP Server! This docu
 ### Environment Setup
 ```bash
 # Clone and enter the project
-git clone https://github.com/your-username/stylize-mcp.git
+git clone https://github.com/BryceEWatson/stylize-mcp-server.git
 cd stylize-mcp
 
 # Create virtual environment

@@ -1,3 +1,5 @@
+> **Archived.** Written for the hosted demo, which went offline in June 2026. The URLs below no longer respond. See the main [README](../../README.md) to run the server yourself.
+
 # 🎨 Stylize MCP Server - Live Demo
 
 > **Try it now:** The Stylize MCP Server is fully operational and ready for public use!
@@ -319,7 +321,7 @@ curl -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize
 
 ## 🚀 Ready to Build Your Own?
 
-1. **Clone the repo**: `git clone https://github.com/your-username/stylize-mcp`
+1. **Clone the repo**: `git clone https://github.com/BryceEWatson/stylize-mcp-server`
 2. **Deploy to GCP**: Use included Terraform config
 3. **Customize styles**: Edit `app/styles.json`
 4. **Scale up**: Add more styles, users, features

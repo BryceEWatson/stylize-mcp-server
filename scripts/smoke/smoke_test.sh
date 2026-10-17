@@ -2,7 +2,7 @@
 # Simple curl-based test script for Stylize MCP Server
 # No Python dependencies required
 
-BASE_URL="${1:-https://stylize-mcp-server-997481449751.us-central1.run.app}"
+BASE_URL="${1:-http://localhost:8080}"
 
 echo "🧪 Testing Stylize MCP Server"
 echo "📍 Base URL: $BASE_URL"
