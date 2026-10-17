@@ -400,21 +400,20 @@ The application is a FastAPI-based server that provides:
 5. **Two-stage image generation pipeline**:
    - Context analysis using GPT-4V when reference images are provided
    - Prompt generation and image creation using DALL·E 3
-   - Results are cached in Redis and stored in GCS
+   - Results are stored in GCS (Redis is configurable but nothing caches responses)
 
 ### Service Dependencies
 - **OpenAI API**: GPT-4V for analysis, DALL·E 3 for generation
 - **Google Cloud Storage**: Image persistence and public access
 - **Firestore**: User accounts, trial sessions, credit balances, usage tracking, and API key storage
-- **Cloud Vision API**: SafeSearch content filtering
-- **Redis (Memorystore)**: Response caching (optional, uses in-memory fallback)
+- **Cloud Vision API**: listed in requirements, but no code calls SafeSearch
+- **Redis (Memorystore)**: optional and configurable; no response caching is implemented
 - **Secret Manager**: OpenAI API key and admin credentials storage
 
 ### Key Implementation Details
 - The application supports context-aware generation through a `ProjectContext` model for brand consistency
 - **Multi-Style Generation**: When no `style_id` is provided, the system automatically generates 4 images with randomly selected styles
 - **Usage Tracking**: Multiple style generation counts as multiple image usage (4x for random styles)
-- Image generation includes automatic SafeSearch filtering for uploaded content
 - Cost controls are implemented via daily global caps and per-user quotas tracked in Firestore
 - The style catalog currently uses a JSON file (`app/styles.json`) with 5 predefined styles: van_gogh, pixel_art, flat_ui_icon, neumorphic_button, glassmorphic_card
 
@@ -450,7 +449,7 @@ gcloud run services describe stylize-mcp-server --region=us-central1
 
 ### Known gaps (see README "Known limitations")
 - Credit purchases add credits without taking payment.
-- The abuse-prevention services only run when `SECURITY_ENABLED=true`; CAPTCHA responses are never verified on a request path.
+- The abuse-prevention services never run on live traffic: they need `SECURITY_ENABLED=true` and a `request` argument that no caller passes. CAPTCHA responses are never verified on a request path.
 - If signed-URL generation fails, `GcsService.generate_signed_url` falls back to a public object URL.
 
 ### Authentication Development Notes
@@ -770,6 +769,7 @@ E2E_CLEANUP=false ./scripts/run-e2e-tests.sh mcp_integration
 #### Manual Docker Compose
 ```bash
 # Start all services and run tests
+echo '{}' > fake-credentials.json   # placeholder the compose file mounts
 docker-compose -f docker-compose.e2e.yml up --build
 
 # Run specific test file

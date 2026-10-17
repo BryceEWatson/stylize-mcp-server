@@ -191,11 +191,13 @@ class GcsService:
             expiration_hours: Number of hours until the signed URL expires (default: 1)
 
         Returns:
-            str: The generated signed URL
+            str: The generated signed URL. If both signing attempts fail, this
+            falls back to a plain public object URL, which only works when the
+            bucket is public.
 
         Raises:
             GcsBucketNotFoundError: If the bucket does not exist
-            GcsSignedUrlError: If generating the signed URL fails
+            GcsSignedUrlError: If checking the bucket fails
         """
         try:
             # Check if the bucket exists

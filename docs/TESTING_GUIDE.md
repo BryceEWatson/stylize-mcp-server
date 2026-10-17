@@ -11,7 +11,7 @@ This guide provides step-by-step instructions to thoroughly test all functionali
 
 ## Testing Environment
 
-- **Production URL**: http://localhost:8080
+- **Local URL**: http://localhost:8080 (the hosted service is offline)
 - **Project**: stylize-mcp-server (GCP Project ID: 997481449751)
 - **Region**: us-central1
 - **Status**: ✅ **FULLY OPERATIONAL** - All endpoints tested and working
@@ -111,7 +111,7 @@ curl -s http://localhost:8080/docs
 
 ### 3.1 MCP Endpoint Availability
 ```bash
-curl -s -X POST http://localhost:8080/mcp \
+curl -s -X POST http://localhost:8080/mcp/ \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "method": "initialize", "id": 1, "params": {"capabilities": {}}}' | jq '.'
 ```
@@ -123,7 +123,7 @@ curl -s -X POST http://localhost:8080/mcp \
 
 ### 3.2 MCP Tools Discovery
 ```bash
-curl -s -X POST http://localhost:8080/mcp \
+curl -s -X POST http://localhost:8080/mcp/ \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "method": "tools/list", "id": 2, "params": {}}' | jq '.'
 ```
@@ -141,7 +141,7 @@ curl -s -X POST http://localhost:8080/mcp \
 
 ### 3.3 MCP Resources Discovery
 ```bash
-curl -s -X POST http://localhost:8080/mcp \
+curl -s -X POST http://localhost:8080/mcp/ \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "method": "resources/list", "id": 3, "params": {}}' | jq '.'
 ```
@@ -374,7 +374,7 @@ curl -s -X POST http://localhost:8080/stylize_image \
 # Convert test image to base64 first
 IMAGE_BASE64=$(cat your_test_image.jpg | base64 -w 0)
 
-curl -s -X POST http://localhost:8080/mcp \
+curl -s -X POST http://localhost:8080/mcp/ \
   -H "Content-Type: application/json" \
   -d "{
     \"jsonrpc\": \"2.0\",
@@ -393,7 +393,7 @@ curl -s -X POST http://localhost:8080/mcp \
 
 ### 8.2 Test MCP List Styles Tool
 ```bash
-curl -s -X POST http://localhost:8080/mcp \
+curl -s -X POST http://localhost:8080/mcp/ \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -408,7 +408,7 @@ curl -s -X POST http://localhost:8080/mcp \
 
 ### 8.3 Test MCP Generate from Text Tool
 ```bash
-curl -s -X POST http://localhost:8080/mcp \
+curl -s -X POST http://localhost:8080/mcp/ \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -451,7 +451,7 @@ echo "   Found $STYLE_COUNT styles"
 
 # 3. MCP initialization
 echo "3. Testing MCP initialization..."
-curl -s -X POST http://localhost:8080/mcp \
+curl -s -X POST http://localhost:8080/mcp/ \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "method": "initialize", "id": 1, "params": {"capabilities": {}}}' | jq '.result.capabilities'
 

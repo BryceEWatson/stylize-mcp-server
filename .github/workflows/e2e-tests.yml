@@ -37,6 +37,9 @@ on:
           - local
           - staging
 
+permissions:
+  contents: read
+
 env:
   # Test configuration
   E2E_ENVIRONMENT: ${{ github.event.inputs.environment || 'local' }}
@@ -79,10 +82,10 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -94,7 +97,7 @@ jobs:
           pip install -r requirements-e2e.txt
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Create fake credentials for testing
         run: |
@@ -103,7 +106,7 @@ jobs:
       - name: Start services
         run: |
           # Start infrastructure services
-          docker-compose -f docker-compose.e2e.yml up -d firestore-emulator gcs-emulator redis
+          docker compose -f docker-compose.e2e.yml up -d firestore-emulator gcs-emulator redis
           
           # Wait for services to be ready
           timeout=60
@@ -126,10 +129,10 @@ jobs:
       - name: Start Selenium
         run: |
           if [ "${{ matrix.browser }}" = "firefox" ]; then
-            docker-compose -f docker-compose.e2e.yml up -d selenium-firefox
+            docker compose -f docker-compose.e2e.yml up -d selenium-firefox
             export E2E_SELENIUM_HUB_URL=http://localhost:4445/wd/hub
           else
-            docker-compose -f docker-compose.e2e.yml up -d selenium-chrome
+            docker compose -f docker-compose.e2e.yml up -d selenium-chrome
             export E2E_SELENIUM_HUB_URL=http://localhost:4444/wd/hub
           fi
           
@@ -149,7 +152,7 @@ jobs:
           E2E_OPENAI_API_KEY: ${{ secrets.E2E_OPENAI_API_KEY }}
         run: |
           # Build and start the application
-          docker-compose -f docker-compose.e2e.yml up -d app
+          docker compose -f docker-compose.e2e.yml up -d app
           
           # Wait for application to be ready
           timeout=120
@@ -164,7 +167,7 @@ jobs:
           
           if [ $timeout -eq 0 ]; then
             echo "Application failed to start"
-            docker-compose -f docker-compose.e2e.yml logs app
+            docker compose -f docker-compose.e2e.yml logs app
             exit 1
           fi
 
@@ -236,20 +239,20 @@ jobs:
         if: failure()
         run: |
           echo "=== Application logs ==="
-          docker-compose -f docker-compose.e2e.yml logs app
+          docker compose -f docker-compose.e2e.yml logs app
           
           echo "=== Firestore emulator logs ==="
-          docker-compose -f docker-compose.e2e.yml logs firestore-emulator
+          docker compose -f docker-compose.e2e.yml logs firestore-emulator
           
           echo "=== Selenium logs ==="
           if [ "${{ matrix.browser }}" = "firefox" ]; then
-            docker-compose -f docker-compose.e2e.yml logs selenium-firefox
+            docker compose -f docker-compose.e2e.yml logs selenium-firefox
           else
-            docker-compose -f docker-compose.e2e.yml logs selenium-chrome
+            docker compose -f docker-compose.e2e.yml logs selenium-chrome
           fi
 
       - name: Upload test reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: e2e-test-reports-${{ matrix.test-suite }}-${{ matrix.browser }}
@@ -257,7 +260,7 @@ jobs:
           retention-days: 7
 
       - name: Upload screenshots on failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: failure()
         with:
           name: screenshots-${{ matrix.test-suite }}-${{ matrix.browser }}
@@ -267,7 +270,7 @@ jobs:
       - name: Clean up
         if: always()
         run: |
-          docker-compose -f docker-compose.e2e.yml down -v
+          docker compose -f docker-compose.e2e.yml down -v
           docker system prune -f
 
   security-tests:
@@ -275,10 +278,10 @@ jobs:
     if: github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'security' || github.event.inputs.test_suite == ''
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.11'
 
@@ -290,7 +293,7 @@ jobs:
 
       - name: Start services for security testing
         run: |
-          docker-compose -f docker-compose.e2e.yml up -d firestore-emulator gcs-emulator redis app
+          docker compose -f docker-compose.e2e.yml up -d firestore-emulator gcs-emulator redis app
           
           # Wait for application
           timeout=120
@@ -317,7 +320,7 @@ jobs:
             -m "security"
 
       - name: Upload security test reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: security-test-reports
@@ -327,17 +330,17 @@ jobs:
       - name: Clean up
         if: always()
         run: |
-          docker-compose -f docker-compose.e2e.yml down -v
+          docker compose -f docker-compose.e2e.yml down -v
 
   performance-tests:
     runs-on: ubuntu-latest
     if: github.event.inputs.test_suite == 'performance'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.11'
 
@@ -349,7 +352,7 @@ jobs:
 
       - name: Start services for performance testing
         run: |
-          docker-compose -f docker-compose.e2e.yml up -d firestore-emulator gcs-emulator redis app
+          docker compose -f docker-compose.e2e.yml up -d firestore-emulator gcs-emulator redis app
           
           # Wait for application
           timeout=120
@@ -377,7 +380,7 @@ jobs:
             -m "performance"
 
       - name: Upload performance test reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: performance-test-reports
@@ -387,7 +390,7 @@ jobs:
       - name: Clean up
         if: always()
         run: |
-          docker-compose -f docker-compose.e2e.yml down -v
+          docker compose -f docker-compose.e2e.yml down -v
 
   summary:
     runs-on: ubuntu-latest
@@ -395,7 +398,7 @@ jobs:
     if: always()
     steps:
       - name: Download all test reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: all-reports
 
@@ -424,7 +427,7 @@ jobs:
           done
 
       - name: Upload test summary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: test-summary
           path: test-summary.md

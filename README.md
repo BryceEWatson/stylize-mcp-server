@@ -17,12 +17,12 @@ I built and ran this in May and June 2025. The hosted demo on Cloud Run was take
 
 ## What's in the code
 
-- **MCP server** ([`app/mcp_server.py`](app/mcp_server.py), built on FastMCP and mounted at `/mcp`). Six tools: `stylize_image`, `generate_image_from_text`, `list_styles`, `get_style_details`, `start_trial_session` and `check_trial_status`. A caller authenticates with an API key or a trial session ID.
+- **MCP server** ([`app/mcp_server.py`](app/mcp_server.py), built on FastMCP and mounted at `/mcp`). Six tools: `stylize_image`, `generate_image_from_text`, `list_styles`, `get_style_details`, `start_trial_session` and `check_trial_status`. `stylize_image` accepts an API key or a trial session ID; `generate_image_from_text` takes only an API key.
 - **REST API** ([`app/main.py`](app/main.py)): `/stylize_image`, `/styles`, account registration and login (JWT), API-key management, trial status and conversion, and credit balance and purchase.
 - **Image pipeline** ([`app/openai_service.py`](app/openai_service.py)). For an uploaded photo, GPT-4o describes the image, and DALL·E 3 generates a new one from that description plus the style prompt. DALL·E 3 can't edit an image, so the result is a reinterpretation, not a filter over the original pixels. Leaving out `style_id` generates four random styles, and those count as four images against the quota.
 - **Style catalog** ([`app/styles.json`](app/styles.json)): `van_gogh`, `pixel_art`, `flat_ui_icon`, `neumorphic_button` and `glassmorphic_card`.
 - **Trial and credits** ([`app/trial_service.py`](app/trial_service.py), [`app/user_service.py`](app/user_service.py)). Trial sessions, accounts and credit balances live in Firestore. The four credit packages are defined in code.
-- **Abuse-prevention services**: device fingerprinting, VPN and proxy detection, behavior analysis, risk scoring, rate limiting and abuse-event monitoring, each in its own `app/*_service.py` module with unit tests. The trial service calls them when a trial session is created, but only when `SECURITY_ENABLED=true` (it's off by default).
+- **Abuse-prevention services**: device fingerprinting, VPN and proxy detection, behavior analysis, risk scoring, rate limiting and abuse-event monitoring, each in its own `app/*_service.py` module with unit tests. They're built but not connected to live traffic (see Known limitations).
 - **Infrastructure**: Terraform for the GCP project in [`infra/`](infra/) and a Cloud Build pipeline ([`cloudbuild.yaml`](cloudbuild.yaml)) that builds the Docker image and deploys it to Cloud Run. GitHub Actions never deploys.
 
 ## Known limitations
@@ -30,11 +30,13 @@ I built and ran this in May and June 2025. The hosted demo on Cloud Run was take
 I'm listing these because a reader evaluating the code should know them before trusting any feature list, mine included.
 
 - **No payment processing.** `purchase_credits` adds credits to the balance without charging anyone. The request model has a field for a Stripe payment method ID, but no Stripe code exists.
+- **Abuse prevention never runs on real requests.** The trial service only uses those services when `SECURITY_ENABLED=true` *and* the caller passes the incoming request object. No route passes it, so even with the flag on, no fingerprinting, VPN check or rate limit applies.
 - **CAPTCHA verification isn't wired up.** [`app/captcha_service.py`](app/captcha_service.py) can verify reCAPTCHA and hCaptcha tokens and pick a challenge level from a risk score, but no request handler verifies a CAPTCHA response. [`app/protection_middleware.py`](app/protection_middleware.py) isn't mounted on the app either.
 - **No content moderation.** The Cloud Vision client library is in `requirements.txt`, but no code calls SafeSearch.
 - **Signed URLs can fall back to public URLs.** If signing fails, [`GcsService.generate_signed_url`](app/gcs_service.py) logs a warning and returns a plain public object URL, which only works if the bucket is public. A tighter version would fail closed.
 - **CORS is wide open.** The app allows every origin with credentials, which the code comments flag as a development setting.
-- **The MCP trial path trusts the caller's session ID.** MCP doesn't pass a client IP, so IP-based limits don't apply to MCP trial sessions.
+- **MCP trial sessions are shared.** MCP doesn't pass a client IP, so `start_trial_session` uses the fixed address `mcp-client`. With Firestore, every MCP caller gets the same active session for 24 hours, so they share one five-image pool and can see each other's session ID.
+- **Several paths fail open.** If creating or looking up a trial session throws (a rate-limit error included), the service returns a new unsaved session instead of refusing. MCP API-key checks pass when the auth service is unavailable or auth is disabled.
 - **No Redis caching.** Redis is configurable, but nothing caches responses.
 - **The E2E suite hasn't run since the demo went offline.** It's in [`tests/e2e/`](tests/e2e/) and runs only on manual dispatch.
 
