@@ -6,7 +6,7 @@ Complete guide for setting up the Stylize MCP Server infrastructure from develop
 
 ### Option 1: Use Production Service (Recommended)
 The easiest way to get started - use our live production service:
-- **URL**: https://stylize-mcp-server-997481449751.us-central1.run.app
+- **URL**: the hosted service at `stylize-mcp-server-997481449751.us-central1.run.app` was taken offline in June 2026
 - **Status**: Fully operational
 - **Trial**: 5 free images, no account required
 - **Setup Time**: 2 minutes for MCP integration
@@ -274,7 +274,7 @@ GLOBAL_DAILY_LIMIT=10000
 
 ```bash
 # Create initial admin API key using the CLI utility
-python manage_api_keys.py create "Admin Key" --permissions admin stylize styles mcp
+python scripts/manage_api_keys.py create "Admin Key" --permissions admin stylize styles mcp
 ```
 
 ### Self-Service API Keys
@@ -390,7 +390,7 @@ gcloud run services update stylize-mcp-server \
 #### Authentication Errors
 ```bash
 # Check if API keys are properly configured
-python manage_api_keys.py list
+python scripts/manage_api_keys.py list
 
 # Verify secret access
 gcloud secrets versions access latest --secret="OPENAI_API_KEY"

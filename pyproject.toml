@@ -72,11 +72,10 @@ prod = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-username/stylize-mcp"
-Documentation = "https://github.com/your-username/stylize-mcp#readme"
-Repository = "https://github.com/your-username/stylize-mcp.git"
-"Bug Tracker" = "https://github.com/your-username/stylize-mcp/issues"
-"Demo" = "https://stylize-mcp-server-997481449751.us-central1.run.app"
+Homepage = "https://github.com/BryceEWatson/stylize-mcp-server"
+Documentation = "https://github.com/BryceEWatson/stylize-mcp-server#readme"
+Repository = "https://github.com/BryceEWatson/stylize-mcp-server.git"
+"Bug Tracker" = "https://github.com/BryceEWatson/stylize-mcp-server/issues"
 
 [project.scripts]
 stylize-server = "app.main:app"

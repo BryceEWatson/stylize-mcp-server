@@ -28,7 +28,7 @@ The Stylize MCP Server is **live and fully operational**. Get started in minutes
     "stylize-server": {
       "transport": {
         "type": "sse",
-        "url": "https://stylize-mcp-server-997481449751.us-central1.run.app/mcp/sse"
+        "url": "http://localhost:8080/mcp/sse"
       }
     }
   }
@@ -82,12 +82,12 @@ Which direction appeals to you? I can refine any of these or create variations!"
 **Perfect for:** Direct access without AI assistant integration
 
 #### Instant Free Trial
-- **Try Now**: https://stylize-mcp-server-997481449751.us-central1.run.app/web/demo
+- **Try Now**: http://localhost:8080/web/demo
 - **5 free images** immediately, no account required
 - **Beautiful web interface** with professional forms
 
 #### User Dashboard  
-- **Dashboard**: https://stylize-mcp-server-997481449751.us-central1.run.app/web/dashboard
+- **Dashboard**: http://localhost:8080/web/dashboard
 - **Create account** for 100 free images/month
 - **Purchase credits** with 4 pricing tiers ($9.99 - $99.99)
 - **Mobile-responsive** design
@@ -99,19 +99,19 @@ Which direction appeals to you? I can refine any of these or create variations!"
 #### Instant Trial Access
 ```bash
 # Check service health
-curl https://stylize-mcp-server-997481449751.us-central1.run.app/health
+curl http://localhost:8080/health
 
 # Single style generation (uses 1 trial image)
-curl -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize_image \
+curl -X POST http://localhost:8080/stylize_image \
   -F "style_id=van_gogh" \
   -F "user_prompt=a peaceful mountain landscape"
 
 # Multi-style generation (uses 4 trial images - omit style_id)
-curl -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize_image \
+curl -X POST http://localhost:8080/stylize_image \
   -F "user_prompt=a peaceful mountain landscape"
 
 # Check available styles
-curl https://stylize-mcp-server-997481449751.us-central1.run.app/styles
+curl http://localhost:8080/styles
 ```
 
 ## 🎨 Available Creative Styles
@@ -152,7 +152,7 @@ curl https://stylize-mcp-server-997481449751.us-central1.run.app/styles
 
 ### **Example: Brand-Aware Generation**
 ```bash
-curl -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize_image \
+curl -X POST http://localhost:8080/stylize_image \
   -F "user_prompt=modern tech company logo" \
   -F "style_id=flat_ui_icon" \
   -F "project_context={\"brand_colors\":[\"#007ACC\",\"#FF6B35\"],\"mood\":\"professional\",\"target_audience\":\"tech professionals\"}"
@@ -177,8 +177,8 @@ curl -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize
 - Check the **[API Reference](../developer-guide/api-reference.md)** for complete documentation
 
 **Need More Details?**
-- **API Documentation**: https://stylize-mcp-server-997481449751.us-central1.run.app/docs
-- **Interactive Demo**: https://stylize-mcp-server-997481449751.us-central1.run.app/web/demo
+- **API Documentation**: http://localhost:8080/docs
+- **Interactive Demo**: http://localhost:8080/web/demo
 
 **Ready to Integrate?**
 - **For Developers**: See [Developer Guide](../developer-guide/)

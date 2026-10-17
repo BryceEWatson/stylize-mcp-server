@@ -149,4 +149,4 @@ Built with:
 
 ---
 
-*For the latest updates, see [GitHub Releases](https://github.com/your-username/stylize-mcp/releases)*
+*For the latest updates, see [GitHub Releases](https://github.com/BryceEWatson/stylize-mcp-server/releases)*

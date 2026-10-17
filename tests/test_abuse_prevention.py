@@ -60,6 +60,7 @@ class TestDeviceFingerprintService:
         current_fp = DeviceFingerprint(
             device_fingerprint="current_fp",
             ip_address="192.168.1.1",
+            client_fingerprint="client_fp",
             canvas_fingerprint="short"  # Suspicious short fingerprint
         )
 
@@ -428,8 +429,14 @@ class TestAbuseMonitoringService:
         assert metrics.trial_creation_rate >= 0
         assert metrics.timestamp > 0
 
-    def test_get_monitoring_stats(self):
-        """Test monitoring statistics."""
+    def test_get_monitoring_stats_without_metrics(self):
+        """With no metrics collected yet, stats report that there is no data."""
+        assert self.service.get_monitoring_stats() == {'no_data': True}
+
+    @pytest.mark.asyncio
+    async def test_get_monitoring_stats(self):
+        """Test monitoring statistics once metrics have been collected."""
+        self.service.metrics_history.append(await self.service._collect_metrics())
         stats = self.service.get_monitoring_stats()
 
         assert 'monitoring_enabled' in stats

@@ -1,3 +1,5 @@
+> **Archived.** Written for the hosted demo, which went offline in June 2026. The URLs below no longer respond. See the main [README](../../README.md) to run the server yourself.
+
 # Stylize MCP Server - Quick Start Guide
 
 ## 🚀 Ready to Use - No Setup Required!

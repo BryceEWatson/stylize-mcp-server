@@ -15,7 +15,7 @@ from PIL import Image
 import os
 
 # Configuration
-BASE_URL = os.getenv("STYLIZE_BASE_URL", "https://stylize-mcp-server-997481449751.us-central1.run.app")
+BASE_URL = os.getenv("STYLIZE_BASE_URL", "http://localhost:8080")
 TIMEOUT = 60  # seconds
 
 # Test image data (1x1 pixel PNG)

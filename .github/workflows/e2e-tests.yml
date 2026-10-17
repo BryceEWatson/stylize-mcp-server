@@ -1,14 +1,8 @@
 name: E2E Tests
 
+# Manual only: these suites start Docker services and can use the
+# E2E_OPENAI_API_KEY secret, so they never run on pull requests.
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'app/**'
-      - 'tests/e2e/**'
-      - 'requirements*.txt'
-      - 'docker-compose*.yml'
-      - 'Dockerfile*'
   workflow_dispatch:
     inputs:
       test_suite:
@@ -435,21 +429,6 @@ jobs:
           name: test-summary
           path: test-summary.md
           retention-days: 30
-
-      - name: Comment on PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const summary = fs.readFileSync('test-summary.md', 'utf8');
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: summary
-            });
 
       - name: Fail if any job failed
         if: needs.e2e-tests.result == 'failure' || needs.security-tests.result == 'failure' || needs.performance-tests.result == 'failure'

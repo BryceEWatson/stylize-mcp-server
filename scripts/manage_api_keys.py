@@ -9,7 +9,7 @@ import json
 from typing import List
 
 # Add current directory to path to import app modules
-sys.path.append('.')
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.auth_service import AuthService
 from app.models import APIPermission
@@ -178,10 +178,10 @@ async def main():
         print(f"  API_KEYS_SECRET_PATH: {os.environ.get('API_KEYS_SECRET_PATH', 'api-keys')}")
         print()
         print("Usage Examples:")
-        print("  python manage_api_keys.py create 'Production Client' --permissions stylize styles mcp")
-        print("  python manage_api_keys.py list")
-        print("  python manage_api_keys.py deactivate key-abc123")
-        print("  python manage_api_keys.py update key-abc123 --active false")
+        print("  python scripts/manage_api_keys.py create 'Production Client' --permissions stylize styles mcp")
+        print("  python scripts/manage_api_keys.py list")
+        print("  python scripts/manage_api_keys.py deactivate key-abc123")
+        print("  python scripts/manage_api_keys.py update key-abc123 --active false")
         return
     
     # Initialize manager and run command

@@ -23,7 +23,7 @@ The Stylize MCP Server is specifically designed to enhance AI assistants with pr
     "stylize-server": {
       "transport": {
         "type": "sse",
-        "url": "https://stylize-mcp-server-997481449751.us-central1.run.app/mcp/sse"
+        "url": "http://localhost:8080/mcp/sse"
       }
     }
   }
@@ -53,7 +53,7 @@ The Stylize MCP Server is specifically designed to enhance AI assistants with pr
 import mcp_client
 
 # Connect to the MCP server
-client = mcp_client.connect("https://stylize-mcp-server-997481449751.us-central1.run.app/mcp")
+client = mcp_client.connect("http://localhost:8080/mcp")
 
 # AI assistants can now use the tools naturally
 trial = await client.call_tool("start_trial_session", {})
@@ -781,12 +781,12 @@ The production MCP server is **live and accessible** at:
 
 **Server-Sent Events (SSE) Transport:**
 ```
-https://stylize-mcp-server-997481449751.us-central1.run.app/mcp/sse
+http://localhost:8080/mcp/sse
 ```
 
 **JSON-RPC Transport:**
 ```
-https://stylize-mcp-server-997481449751.us-central1.run.app/mcp
+http://localhost:8080/mcp
 ```
 
 ### Verified Compatibility
@@ -805,7 +805,7 @@ https://stylize-mcp-server-997481449751.us-central1.run.app/mcp
     "stylize-production": {
       "transport": {
         "type": "sse",
-        "url": "https://stylize-mcp-server-997481449751.us-central1.run.app/mcp/sse"
+        "url": "http://localhost:8080/mcp/sse"
       },
       "env": {
         "API_KEY": "your-production-api-key"

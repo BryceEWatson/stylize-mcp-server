@@ -156,3 +156,6 @@ tmp/
 
 # MCP specific  
 mcp-logs/
+
+# Throwaway credentials file the E2E scripts generate at run time
+fake-credentials.json

@@ -11,7 +11,7 @@ This guide provides step-by-step instructions to thoroughly test all functionali
 
 ## Testing Environment
 
-- **Production URL**: https://stylize-mcp-server-997481449751.us-central1.run.app
+- **Production URL**: http://localhost:8080
 - **Project**: stylize-mcp-server (GCP Project ID: 997481449751)
 - **Region**: us-central1
 - **Status**: ✅ **FULLY OPERATIONAL** - All endpoints tested and working
@@ -32,7 +32,7 @@ This guide provides step-by-step instructions to thoroughly test all functionali
 
 ### 1.1 Application Health Status
 ```bash
-curl -s https://stylize-mcp-server-997481449751.us-central1.run.app/health | jq '.'
+curl -s http://localhost:8080/health | jq '.'
 ```
 
 **Expected Response:**
@@ -61,7 +61,7 @@ curl -s https://stylize-mcp-server-997481449751.us-central1.run.app/health | jq 
 
 ### 1.2 Response Time Check
 ```bash
-time curl -s https://stylize-mcp-server-997481449751.us-central1.run.app/health > /dev/null
+time curl -s http://localhost:8080/health > /dev/null
 ```
 
 **✅ Pass Criteria:**
@@ -74,7 +74,7 @@ time curl -s https://stylize-mcp-server-997481449751.us-central1.run.app/health 
 
 ### 2.1 Styles Catalog Endpoint
 ```bash
-curl -s https://stylize-mcp-server-997481449751.us-central1.run.app/styles | jq '.'
+curl -s http://localhost:8080/styles | jq '.'
 ```
 
 **Expected Response:** Array of 5 style objects
@@ -97,7 +97,7 @@ curl -s https://stylize-mcp-server-997481449751.us-central1.run.app/styles | jq 
 
 ### 2.2 API Documentation Access
 ```bash
-curl -s https://stylize-mcp-server-997481449751.us-central1.run.app/docs
+curl -s http://localhost:8080/docs
 ```
 
 **✅ Pass Criteria:**
@@ -111,7 +111,7 @@ curl -s https://stylize-mcp-server-997481449751.us-central1.run.app/docs
 
 ### 3.1 MCP Endpoint Availability
 ```bash
-curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/mcp \
+curl -s -X POST http://localhost:8080/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "method": "initialize", "id": 1, "params": {"capabilities": {}}}' | jq '.'
 ```
@@ -123,7 +123,7 @@ curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/mcp 
 
 ### 3.2 MCP Tools Discovery
 ```bash
-curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/mcp \
+curl -s -X POST http://localhost:8080/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "method": "tools/list", "id": 2, "params": {}}' | jq '.'
 ```
@@ -141,7 +141,7 @@ curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/mcp 
 
 ### 3.3 MCP Resources Discovery
 ```bash
-curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/mcp \
+curl -s -X POST http://localhost:8080/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "method": "resources/list", "id": 3, "params": {}}' | jq '.'
 ```
@@ -166,7 +166,7 @@ cat your_test_image.jpg | base64 -w 0 > test_image_base64.txt
 
 ### 4.2 Text-Only Generation Test
 ```bash
-curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize_image \
+curl -s -X POST http://localhost:8080/stylize_image \
   -F "style_id=van_gogh" \
   -F "user_prompt=a beautiful sunset over mountains" | jq '.'
 ```
@@ -187,7 +187,7 @@ curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/styl
 
 ### 4.3 Image Upload and Stylization Test
 ```bash
-curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize_image \
+curl -s -X POST http://localhost:8080/stylize_image \
   -F "image=@your_test_image.jpg" \
   -F "style_id=pixel_art" \
   -F "user_prompt=make it retro gaming style" | jq '.'
@@ -201,7 +201,7 @@ curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/styl
 
 ### 4.4 Project Context Test
 ```bash
-curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize_image \
+curl -s -X POST http://localhost:8080/stylize_image \
   -F "style_id=flat_ui_icon" \
   -F "user_prompt=app icon for a music player" \
   -F 'project_context_str={"brand_name":"MusicApp","brand_colors":["#3498db","#e74c3c"],"target_audience":"young adults","mood":"energetic"}' | jq '.'
@@ -231,7 +231,7 @@ file generated_image.png
 
 ### 5.1 Invalid Style ID Test
 ```bash
-curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize_image \
+curl -s -X POST http://localhost:8080/stylize_image \
   -F "style_id=invalid_style" \
   -F "user_prompt=test prompt"
 ```
@@ -240,7 +240,7 @@ curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/styl
 
 ### 5.2 Missing Required Fields Test
 ```bash
-curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize_image
+curl -s -X POST http://localhost:8080/stylize_image
 ```
 
 **Expected Response:** HTTP 400 with error about missing style_id
@@ -248,7 +248,7 @@ curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/styl
 ### 5.3 Invalid Image Format Test
 ```bash
 echo "not an image" > fake_image.txt
-curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize_image \
+curl -s -X POST http://localhost:8080/stylize_image \
   -F "image=@fake_image.txt" \
   -F "style_id=van_gogh"
 ```
@@ -259,7 +259,7 @@ curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/styl
 ```bash
 # Create a file larger than 5MB
 dd if=/dev/zero of=large_file.jpg bs=1M count=6
-curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize_image \
+curl -s -X POST http://localhost:8080/stylize_image \
   -F "image=@large_file.jpg" \
   -F "style_id=van_gogh"
 ```
@@ -268,7 +268,7 @@ curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/styl
 
 ### 5.5 Invalid Project Context JSON Test
 ```bash
-curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize_image \
+curl -s -X POST http://localhost:8080/stylize_image \
   -F "style_id=van_gogh" \
   -F "user_prompt=test" \
   -F 'project_context_str=invalid json'
@@ -289,7 +289,7 @@ curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/styl
 ```bash
 # Wait 10 minutes for instance to scale down, then test
 sleep 600
-time curl -s https://stylize-mcp-server-997481449751.us-central1.run.app/health
+time curl -s http://localhost:8080/health
 ```
 
 **✅ Pass Criteria:**
@@ -300,7 +300,7 @@ time curl -s https://stylize-mcp-server-997481449751.us-central1.run.app/health
 ```bash
 # Test multiple simultaneous requests
 for i in {1..5}; do
-  curl -s https://stylize-mcp-server-997481449751.us-central1.run.app/styles > /dev/null &
+  curl -s http://localhost:8080/styles > /dev/null &
 done
 wait
 ```
@@ -314,7 +314,7 @@ wait
 ```bash
 # Test multiple image generations (use small prompts to reduce costs)
 for i in {1..3}; do
-  curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize_image \
+  curl -s -X POST http://localhost:8080/stylize_image \
     -F "style_id=van_gogh" \
     -F "user_prompt=simple test $i" &
 done
@@ -335,7 +335,7 @@ wait
 curl -s -H "Origin: https://example.com" \
   -H "Access-Control-Request-Method: POST" \
   -H "Access-Control-Request-Headers: Content-Type" \
-  -X OPTIONS https://stylize-mcp-server-997481449751.us-central1.run.app/health -v
+  -X OPTIONS http://localhost:8080/health -v
 ```
 
 **✅ Pass Criteria:**
@@ -344,7 +344,7 @@ curl -s -H "Origin: https://example.com" \
 
 ### 7.2 Input Sanitization Test
 ```bash
-curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize_image \
+curl -s -X POST http://localhost:8080/stylize_image \
   -F "style_id=van_gogh" \
   -F "user_prompt=<script>alert('xss')</script>"
 ```
@@ -356,7 +356,7 @@ curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/styl
 
 ### 7.3 SQL Injection Simulation
 ```bash
-curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize_image \
+curl -s -X POST http://localhost:8080/stylize_image \
   -F "style_id=van_gogh'; DROP TABLE users; --" \
   -F "user_prompt=test"
 ```
@@ -374,7 +374,7 @@ curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/styl
 # Convert test image to base64 first
 IMAGE_BASE64=$(cat your_test_image.jpg | base64 -w 0)
 
-curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/mcp \
+curl -s -X POST http://localhost:8080/mcp \
   -H "Content-Type: application/json" \
   -d "{
     \"jsonrpc\": \"2.0\",
@@ -393,7 +393,7 @@ curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/mcp 
 
 ### 8.2 Test MCP List Styles Tool
 ```bash
-curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/mcp \
+curl -s -X POST http://localhost:8080/mcp \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -408,7 +408,7 @@ curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/mcp 
 
 ### 8.3 Test MCP Generate from Text Tool
 ```bash
-curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/mcp \
+curl -s -X POST http://localhost:8080/mcp \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -442,22 +442,22 @@ echo "🚀 Starting Complete Integration Test..."
 
 # 1. Health check
 echo "1. Testing health endpoint..."
-curl -s https://stylize-mcp-server-997481449751.us-central1.run.app/health | jq '.status'
+curl -s http://localhost:8080/health | jq '.status'
 
 # 2. Styles catalog
 echo "2. Testing styles endpoint..."
-STYLE_COUNT=$(curl -s https://stylize-mcp-server-997481449751.us-central1.run.app/styles | jq 'length')
+STYLE_COUNT=$(curl -s http://localhost:8080/styles | jq 'length')
 echo "   Found $STYLE_COUNT styles"
 
 # 3. MCP initialization
 echo "3. Testing MCP initialization..."
-curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/mcp \
+curl -s -X POST http://localhost:8080/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "method": "initialize", "id": 1, "params": {"capabilities": {}}}' | jq '.result.capabilities'
 
 # 4. Text-only image generation
 echo "4. Testing text-only generation..."
-RESPONSE=$(curl -s -X POST https://stylize-mcp-server-997481449751.us-central1.run.app/stylize_image \
+RESPONSE=$(curl -s -X POST http://localhost:8080/stylize_image \
   -F "style_id=van_gogh" \
   -F "user_prompt=a simple landscape")
 IMAGE_URL=$(echo $RESPONSE | jq -r '.stylized_image_url')
