@@ -873,7 +873,7 @@ The E2E environment includes:
 - **Application** with test configuration
 - **Firestore emulator** for database operations
 - **GCS emulator** for file storage
-- **Redis** for caching
+- **Redis** (started for completeness; the app does not cache in it)
 - **Selenium Grid** for browser automation
 
 ### Debugging E2E Tests

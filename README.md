@@ -36,7 +36,7 @@ I'm listing these because a reader evaluating the code should know them before t
 - **Signed URLs can fall back to public URLs.** If signing fails, [`GcsService.generate_signed_url`](app/gcs_service.py) logs a warning and returns a plain public object URL, which only works if the bucket is public. A tighter version would fail closed.
 - **CORS is wide open.** The app allows every origin with credentials, which the code comments flag as a development setting.
 - **MCP trial sessions are shared.** MCP doesn't pass a client IP, so `start_trial_session` uses the fixed address `mcp-client`. With Firestore, every MCP caller gets the same active session for 24 hours, so they share one five-image pool and can see each other's session ID.
-- **Several paths fail open.** If creating or looking up a trial session throws (a rate-limit error included), the service returns a new unsaved session instead of refusing. MCP API-key checks pass when the auth service is unavailable or auth is disabled.
+- **Several paths fail open.** If creating or looking up a trial session throws (a Firestore error, say), the service returns a new unsaved session instead of refusing. MCP API-key checks pass when the auth service is unavailable or auth is disabled.
 - **No Redis caching.** Redis is configurable, but nothing caches responses.
 - **The E2E suite hasn't run since the demo went offline.** It's in [`tests/e2e/`](tests/e2e/) and runs only on manual dispatch.
 

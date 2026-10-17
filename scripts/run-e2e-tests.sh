@@ -33,7 +33,7 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null; then
+if ! docker compose version &> /dev/null; then
     echo -e "${RED}❌ Docker Compose is required but not installed${NC}"
     exit 1
 fi
@@ -57,21 +57,21 @@ echo -e "${BLUE}🚀 Starting test services...${NC}"
 
 # Clean up any existing containers
 if [ "$CLEANUP" = "true" ]; then
-    docker-compose -f docker-compose.e2e.yml down -v >/dev/null 2>&1 || true
+    docker compose -f docker-compose.e2e.yml down -v >/dev/null 2>&1 || true
 fi
 
 # Start infrastructure services
 echo "  Starting infrastructure services..."
-docker-compose -f docker-compose.e2e.yml up -d firestore-emulator gcs-emulator redis
+docker compose -f docker-compose.e2e.yml up -d firestore-emulator gcs-emulator redis
 
 # Start Selenium based on browser choice
 if [ "$BROWSER" = "firefox" ]; then
     echo "  Starting Firefox Selenium..."
-    docker-compose -f docker-compose.e2e.yml up -d selenium-firefox
+    docker compose -f docker-compose.e2e.yml up -d selenium-firefox
     SELENIUM_URL="http://localhost:4445/wd/hub"
 else
     echo "  Starting Chrome Selenium..."
-    docker-compose -f docker-compose.e2e.yml up -d selenium-chrome
+    docker compose -f docker-compose.e2e.yml up -d selenium-chrome
     SELENIUM_URL="http://localhost:4444/wd/hub"
 fi
 
@@ -103,7 +103,7 @@ wait_for_service "$SELENIUM_URL/status" "Selenium"
 
 # Start application
 echo "  Starting application..."
-docker-compose -f docker-compose.e2e.yml up -d app
+docker compose -f docker-compose.e2e.yml up -d app
 
 wait_for_service "http://localhost:8080/health" "Application"
 
@@ -198,14 +198,14 @@ if [ $EXIT_CODE -ne 0 ]; then
     echo ""
     echo -e "${BLUE}🔍 Service logs (last 50 lines):${NC}"
     echo -e "${YELLOW}Application logs:${NC}"
-    docker-compose -f docker-compose.e2e.yml logs --tail=50 app
+    docker compose -f docker-compose.e2e.yml logs --tail=50 app
 fi
 
 # Cleanup
 if [ "$CLEANUP" = "true" ]; then
     echo ""
     echo -e "${BLUE}🧹 Cleaning up...${NC}"
-    docker-compose -f docker-compose.e2e.yml down -v
+    docker compose -f docker-compose.e2e.yml down -v
     echo -e "${GREEN}✅ Cleanup complete${NC}"
 fi
 

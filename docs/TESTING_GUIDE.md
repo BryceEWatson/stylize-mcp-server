@@ -14,7 +14,7 @@ This guide provides step-by-step instructions to thoroughly test all functionali
 - **Local URL**: http://localhost:8080 (the hosted service is offline)
 - **Project**: stylize-mcp-server (GCP Project ID: 997481449751)
 - **Region**: us-central1
-- **Status**: ✅ **FULLY OPERATIONAL** - All endpoints tested and working
+- **Status**: the hosted service has been offline since June 2026. The steps below were written against it.
 
 ## Test Suite Overview
 
